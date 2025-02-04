@@ -36,6 +36,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.ByteStringBuilder
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -74,13 +75,13 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
         client2ServerCharacteristicUuid: UUID,
         server2ClientCharacteristicUuid: UUID,
         identCharacteristicUuid: UUID?,
-        l2capCharacteristicUuid: UUID?
+        l2capUuid: UUID?
     ) {
         this.stateCharacteristicUuid = stateCharacteristicUuid
         this.client2ServerCharacteristicUuid = client2ServerCharacteristicUuid
         this.server2ClientCharacteristicUuid = server2ClientCharacteristicUuid
         this.identCharacteristicUuid = identCharacteristicUuid
-        this.l2capCharacteristicUuid = l2capCharacteristicUuid
+        this.l2capCharacteristicUuid = l2capUuid
     }
 
     private lateinit var onError: (error: Throwable) -> Unit
@@ -377,6 +378,8 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
                 clientCharacteristicConfigUuid.toJavaUuid(),
                 BluetoothGattDescriptor.PERMISSION_WRITE
             )
+            // The setValue() is deprecated, but there is no new addDesciptor() taking Value to mitigate.
+            @Suppress("DEPRECATION")
             descriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
             characteristic.addDescriptor(descriptor)
         }
@@ -504,7 +507,9 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
                 throw Error("Error notifyCharacteristicChanged on characteristic ${characteristic.uuid} rc=$rc")
             }
         } else {
+            @Suppress("DEPRECATION")
             characteristic.setValue(value)
+            @Suppress("DEPRECATION")
             if (!gattServer!!.notifyCharacteristicChanged(
                 device!!,
                 characteristic,
@@ -609,7 +614,9 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
             append((length shr 0).and(0xffU).toByte())
         }
         bsb.append(message)
-        l2capSocket?.outputStream?.write(bsb.toByteString().toByteArray())
-        l2capSocket?.outputStream?.flush()
+        withContext(Dispatchers.IO) {
+            l2capSocket?.outputStream?.write(bsb.toByteString().toByteArray())
+            l2capSocket?.outputStream?.flush()
+        }
     }
 }

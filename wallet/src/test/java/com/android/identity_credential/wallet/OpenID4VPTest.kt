@@ -42,6 +42,7 @@ import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import kotlin.time.Duration
 
+// TODO: b/393388152 - Many errors prob. test is never used.
 class OpenID4VPTest {
 
     // real-life example from https://verifier.eudiw.dev/home
@@ -122,12 +123,15 @@ lrW+vvdmRHBgS+ss56uWyYor6W7ah9ygBwYFK4EEACI=
 
     private fun generateSignedJWT(claimsSet: JWTClaimsSet) : SignedJWT {
         val (singleUseReaderKeyPriv, singleUseReaderKeyCertChain) = createSingleUseReaderKey()
-        val readerPub = singleUseReaderKeyPriv.publicKey.javaPublicKey as ECPublicKey
-        val readerPriv = singleUseReaderKeyPriv.javaPrivateKey as ECPrivateKey
+        val readerPublic = singleUseReaderKeyPriv.publicKey.javaPublicKey as ECPublicKey
+        val readerPrivate = singleUseReaderKeyPriv.javaPrivateKey as ECPrivateKey
+
+        // TODO: b/393388152: ECKey is deprecated, but might be current library dependency.
+        @Suppress("DEPRECATION")
         val readerKey = ECKey(
             Curve.P_256,
-            readerPub,
-            readerPriv,
+            readerPublic,
+            readerPrivate,
             null,
             null,
             null,

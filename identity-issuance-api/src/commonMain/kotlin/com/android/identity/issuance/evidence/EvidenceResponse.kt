@@ -8,12 +8,12 @@ import com.android.identity.cbor.Cbor
  */
 @CborSerializable
 sealed class EvidenceResponse {
-    fun toCbor(): ByteArray {
+    fun encodeToCbor(): ByteArray { // Don't use toCbor here, it will shadow generated extensions.
         return Cbor.encode(toDataItem())
     }
 
     companion object {
-        fun fromCbor(encodedValue: ByteArray): EvidenceResponse {
+        fun decodeFromCbor(encodedValue: ByteArray): EvidenceResponse {
             return fromDataItem(Cbor.decode(encodedValue))
         }
     }

@@ -15,14 +15,14 @@ class EvidenceResponseTest {
                 1 to ByteString("ace".toByteArray(Charset.forName("UTF-8")))
             ),
             ByteString(byteArrayOf(3, 7, 1)))
-        val copy = EvidenceResponse.fromCbor(orig.toCbor())
+        val copy = EvidenceResponse.decodeFromCbor(orig.encodeToCbor())
         Assert.assertEquals(orig, copy)
     }
 
     @Test
     fun cborSerialization_IcaoNfcTunnel() {
         val orig = EvidenceResponseIcaoNfcTunnel(ByteString(byteArrayOf(3, 7, 1)))
-        val copy = EvidenceResponse.fromCbor(orig.toCbor())
+        val copy = EvidenceResponse.decodeFromCbor(orig.encodeToCbor())
         Assert.assertEquals(orig, copy)
     }
 
@@ -37,28 +37,28 @@ class EvidenceResponseTest {
             ),
             ByteString(byteArrayOf(3, 7, 1))
         )
-        val copy = EvidenceResponse.fromCbor(orig.toCbor())
+        val copy = EvidenceResponse.decodeFromCbor(orig.encodeToCbor())
         Assert.assertEquals(orig, copy)
     }
 
     @Test
     fun cborSerialization_Message() {
         val orig = EvidenceResponseMessage(true)
-        val copy = EvidenceResponse.fromCbor(orig.toCbor())
+        val copy = EvidenceResponse.decodeFromCbor(orig.encodeToCbor())
         Assert.assertEquals(orig, copy)
     }
 
     @Test
     fun cborSerialization_QuestionMultipleChoice() {
         val orig = EvidenceResponseQuestionMultipleChoice("foo")
-        val copy = EvidenceResponse.fromCbor(orig.toCbor())
+        val copy = EvidenceResponse.decodeFromCbor(orig.encodeToCbor())
         Assert.assertEquals(orig, copy)
     }
 
     @Test
     fun cborSerialization_QuestionString() {
         val orig = EvidenceResponseQuestionString("bar")
-        val copy = EvidenceResponse.fromCbor(orig.toCbor())
+        val copy = EvidenceResponse.decodeFromCbor(orig.encodeToCbor())
         Assert.assertEquals(orig, copy)
     }
 }

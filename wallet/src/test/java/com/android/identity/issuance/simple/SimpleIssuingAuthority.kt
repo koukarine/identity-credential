@@ -130,14 +130,14 @@ abstract class SimpleIssuingAuthority(
                 val registrationResponse = RegistrationResponse.fromDataItem(map["registrationResponse"])
 
                 val stateAsInt = map["state"].asNumber.toInt()
-                val state = DocumentCondition.values().firstOrNull {it.ordinal == stateAsInt}
+                val state = DocumentCondition.entries.firstOrNull {it.ordinal == stateAsInt}
                     ?: throw IllegalArgumentException("Unknown state with value $stateAsInt")
 
                 val collectedEvidence = mutableMapOf<String, EvidenceResponse>()
                 val evidenceMap = map["collectedEvidence"].asMap
                 for (evidenceId in evidenceMap.keys) {
                     collectedEvidence[evidenceId.asTstr] =
-                        EvidenceResponse.fromCbor(Cbor.encode(evidenceMap[evidenceId]!!))
+                        EvidenceResponse.decodeFromCbor(Cbor.encode(evidenceMap[evidenceId]!!))
                 }
 
                 val credentialRequests = mutableListOf<SimpleCredentialRequest>()
@@ -169,7 +169,7 @@ abstract class SimpleIssuingAuthority(
             }
             val ceMapBuilder = CborMap.builder()
             collectedEvidence.forEach() { evidence ->
-                ceMapBuilder.put(evidence.key, RawCbor(evidence.value.toCbor()))
+                ceMapBuilder.put(evidence.key, RawCbor(evidence.value.encodeToCbor()))
             }
             val mapBuilder = CborMap.builder()
                 .put("registrationResponse", registrationResponse.toDataItem())
