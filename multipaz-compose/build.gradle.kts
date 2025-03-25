@@ -62,6 +62,7 @@ kotlin {
 
                 implementation(project(":multipaz"))
                 implementation(project(":multipaz-models"))
+                implementation(libs.atomicfu)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.qrose)
@@ -86,6 +87,7 @@ kotlin {
                 implementation(libs.androidx.camera.lifecycle)
                 implementation(libs.androidx.camera.view)
                 implementation(libs.androidx.lifecycle.extensions)
+                implementation(libs.face.detection)
             }
         }
     }
