@@ -56,6 +56,7 @@ kotlin {
 
                 implementation(project(":multipaz"))
                 implementation(project(":multipaz-models"))
+                implementation(libs.atomicfu)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.qrose)
@@ -111,4 +112,7 @@ android {
             excludes += listOf("/META-INF/versions/9/OSGI-INF/MANIFEST.MF")
         }
     }
+}
+dependencies {
+    implementation(libs.androidx.foundation.layout.android)
 }

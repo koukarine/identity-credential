@@ -1,173 +1,165 @@
 package org.multipaz.compose.camera
 
-import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.ObjCAction
-import platform.AVFoundation.AVCaptureDevice
-import platform.AVFoundation.AVCaptureDeviceDiscoverySession
-import platform.AVFoundation.AVCaptureDeviceInput
-import platform.AVFoundation.AVCaptureDevicePositionBack
-import platform.AVFoundation.AVCaptureDevicePositionFront
-import platform.AVFoundation.AVCaptureDeviceTypeBuiltInWideAngleCamera
-import platform.AVFoundation.AVCaptureSession
-import platform.AVFoundation.AVCaptureVideoDataOutput
-import platform.AVFoundation.AVCaptureVideoOrientation
-import platform.AVFoundation.AVCaptureVideoOrientationLandscapeLeft
-import platform.AVFoundation.AVCaptureVideoOrientationLandscapeRight
-import platform.AVFoundation.AVCaptureVideoOrientationPortrait
-import platform.AVFoundation.AVCaptureVideoOrientationPortraitUpsideDown
-import platform.AVFoundation.AVCaptureVideoPreviewLayer
-import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
-import platform.AVFoundation.AVMediaTypeVideo
-import platform.AVFoundation.AVVideoCodecKey
-import platform.AVFoundation.AVVideoCodecTypeJPEG
-import platform.Foundation.NSNotificationCenter
-import platform.UIKit.NSLayoutConstraint
-import platform.UIKit.UIColor
+import platform.AVFoundation.*
+import platform.Foundation.NSData
+import platform.Foundation.NSError
 import platform.UIKit.UIDevice
 import platform.UIKit.UIDeviceOrientation
 import platform.UIKit.UIView
-import platform.UIKit.UIViewController
+import platform.darwin.DISPATCH_QUEUE_PRIORITY_DEFAULT
+import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_global_queue
-import platform.darwin.dispatch_get_main_queue
 
-class CameraViewController(
-    private val cameraSelector: CameraSelector,
-    private val showPreview: Boolean
-) : UIViewController(nibName = null, bundle = null) {
+class CameraViewController : NSObject(), AVCapturePhotoCaptureDelegateProtocol {
+    private var currentCamera: AVCaptureDevice? = null
+    private var photoOutput: AVCapturePhotoOutput? = null
+    var captureSession: AVCaptureSession? = null
+    var previewLayer: AVCaptureVideoPreviewLayer? = null
+    var onFrameCapture: ((NSData?) -> Unit)? = null
+    var onError: ((CameraException) -> Unit)? = null
 
-    private val doNotChange: AVCaptureVideoOrientation = 7162530L // Arbitrary code.
-    private val previewView = UIView()
-    private var previewLayer: AVCaptureVideoPreviewLayer? = null
-    private val captureSession = AVCaptureSession()
+    sealed class CameraException : Exception() {
+        class DeviceNotAvailable : CameraException()
+        class ConfigurationError(message: String) : CameraException()
+        class CaptureError(message: String) : CameraException()
+    }
 
-    override fun viewDidLoad() {
-        super.viewDidLoad()
+    fun setupSession(cameraLens: CameraSelection) {
+        try {
+            captureSession = AVCaptureSession()
+            captureSession?.beginConfiguration()
 
-        setupCamera()
-        if (showPreview) {
-            view.backgroundColor = UIColor.blackColor
-            setupPreviewView()
-            setupPreviewLayer()
+            if (!setupInputs(cameraLens)) {
+                throw CameraException.DeviceNotAvailable()
+            }
+
+            setupPhotoOutput()
+
+            captureSession?.commitConfiguration()
+
+        } catch (e: CameraException) {
+            cleanupSession()
+            onError?.invoke(e)
         }
-        dispatch_async(dispatch_get_global_queue(0L, 0UL)) {
-            captureSession.startRunning()
-            println("Capture session started.")
-        }
-    }
-
-    override fun viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-
-        // Ensure proper resizing after layout updates.
-        updatePreviewLayerFrame()
-    }
-
-    override fun viewWillDisappear(animated: Boolean) {
-        super.viewWillDisappear(animated)
-
-        // Clean up rotation notification listener.
-        NSNotificationCenter.defaultCenter.removeObserver(this)
-        UIDevice.currentDevice().endGeneratingDeviceOrientationNotifications()
-    }
-
-    /** Callback for [OrientationListener]. */
-    @OptIn(BetaInteropApi::class)
-    @ObjCAction
-    fun handleDeviceOrientationDidChange() {
-        println("handleDeviceOrientationDidChange.")
-        // Directly update preview orientation when the device rotates.
-        updatePreviewLayerFrame()
     }
 
     @OptIn(ExperimentalForeignApi::class)
-    private fun setupCamera() {
-        captureSession.beginConfiguration()
+    private fun setupInputs(cameraLens: CameraSelection): Boolean {
+        currentCamera =
+            AVCaptureDeviceDiscoverySession.discoverySessionWithDeviceTypes(
+                listOf(AVCaptureDeviceTypeBuiltInWideAngleCamera),
+                mediaType = AVMediaTypeVideo,
+                position = when (cameraLens) {
+                    CameraSelection.DEFAULT_FRONT_CAMERA -> AVCaptureDevicePositionFront
+                    CameraSelection.DEFAULT_BACK_CAMERA -> AVCaptureDevicePositionBack
+                    else -> throw CameraException.ConfigurationError("Invalid camera selection: $cameraLens")
+                }
+            ).devices.firstOrNull() as AVCaptureDevice?
 
-        val camera = when (cameraSelector) {
-            CameraSelector.DEFAULT_FRONT_CAMERA -> {
-                AVCaptureDeviceDiscoverySession.discoverySessionWithDeviceTypes(
-                    listOf(AVCaptureDeviceTypeBuiltInWideAngleCamera),
-                    mediaType = AVMediaTypeVideo,
-                    position = AVCaptureDevicePositionFront
-                ).devices.firstOrNull()
+        try {
+            val input = AVCaptureDeviceInput.deviceInputWithDevice(
+                currentCamera!!,
+                null
+            ) ?: return false
+
+            if (captureSession?.canAddInput(input) == true) {
+                captureSession?.addInput(input)
+                return true
             }
+        } catch (e: Exception) {
+            throw CameraException.ConfigurationError(e.message ?: "Unknown Camera error")
+        }
+        return false
+    }
 
-            CameraSelector.DEFAULT_BACK_CAMERA -> {
-                AVCaptureDeviceDiscoverySession.discoverySessionWithDeviceTypes(
-                    listOf(AVCaptureDeviceTypeBuiltInWideAngleCamera),
-                    mediaType = AVMediaTypeVideo,
-                    position = AVCaptureDevicePositionBack
-                ).devices.firstOrNull()
-            }
-        } ?: return
-
-        println("Camera found: $camera.")
-
-        val videoInput = AVCaptureDeviceInput(device = camera as AVCaptureDevice, error = null)
-        if (captureSession.canAddInput(videoInput)) {
-            captureSession.addInput(videoInput)
-            println("Capture session input added.")
+    private fun setupPhotoOutput() {
+        photoOutput = AVCapturePhotoOutput()
+        photoOutput?.setHighResolutionCaptureEnabled(true)
+        if (captureSession?.canAddOutput(photoOutput!!) == true) { //todo: plugin role?
+            captureSession?.addOutput(photoOutput!!)
         } else {
-            println("Failed to add input to the capture session.")
+            throw CameraException.ConfigurationError("Cannot add photo output")
         }
-
-        val videoOutput = AVCaptureVideoDataOutput().apply {
-            videoSettings = mapOf(AVVideoCodecKey to AVVideoCodecTypeJPEG)
-            alwaysDiscardsLateVideoFrames = true // Improves performance.
-        }
-
-        if (captureSession.canAddOutput(videoOutput)) {
-            captureSession.addOutput(videoOutput)
-        }
-
-        captureSession.commitConfiguration()
-        println("Capture session config committed.")
     }
 
-    private fun setupPreviewView() {
-        println("setupPreviewView!")
-        view.addSubview(previewView)
-        previewView.translatesAutoresizingMaskIntoConstraints = false
-
-        NSLayoutConstraint.activateConstraints(
-            listOf(
-                previewView.leadingAnchor.constraintEqualToAnchor(view.leadingAnchor),
-                previewView.trailingAnchor.constraintEqualToAnchor(view.trailingAnchor),
-                previewView.topAnchor.constraintEqualToAnchor(view.topAnchor),
-                previewView.bottomAnchor.constraintEqualToAnchor(view.bottomAnchor)
-            )
-        )
+    fun startSession() {
+        if (captureSession?.isRunning() == false) {
+            dispatch_async(
+                dispatch_get_global_queue(
+                    DISPATCH_QUEUE_PRIORITY_DEFAULT.toLong(),
+                    0u
+                )
+            ) {
+                captureSession?.startRunning()
+            }
+        }
     }
 
-    private fun setupPreviewLayer() {
-        previewLayer = AVCaptureVideoPreviewLayer(session = captureSession).apply {
-            videoGravity = AVLayerVideoGravityResizeAspectFill // Removes black bars.
+    fun stopSession() {
+        if (captureSession?.isRunning() == true) {
+            captureSession?.stopRunning()
         }
-        previewLayer?.let {
-            previewView.layer.addSublayer(it)
-            updatePreviewLayerFrame()
-        }
+    }
+
+    fun cleanupSession() {
+        stopSession()
+        previewLayer?.removeFromSuperlayer()
+        previewLayer = null
+        captureSession = null
+        photoOutput = null
+        currentCamera = null
     }
 
     @OptIn(ExperimentalForeignApi::class)
-    private fun updatePreviewLayerFrame() {
-        // Align the preview layer to the preview view's bounds and adjust orientation.
-        previewLayer?.frame = previewView.bounds
-        val newOrientation = getVideoOrientationForDevice()
-        if (newOrientation != doNotChange) previewLayer?.connection?.videoOrientation = newOrientation
+    fun setupPreviewLayer(view: UIView) {
+        captureSession?.let { session ->
+            val newPreviewLayer = AVCaptureVideoPreviewLayer(session = session).apply {
+                videoGravity = AVLayerVideoGravityResizeAspectFill
+                setFrame(view.bounds)
+                currentVideoOrientation()?.let { newOrientation -> connection?.videoOrientation = newOrientation }
+            }
+            view.layer.addSublayer(newPreviewLayer)
+
+            previewLayer = newPreviewLayer
+        }
     }
 
-    private fun getVideoOrientationForDevice(): AVCaptureVideoOrientation {
+    /**
+     * Convert UIDeviceOrientation to AVCaptureVideoOrientation.
+     *
+     * @return AVCaptureVideoOrientation. Portrait if not identified, null to indicate no orientation needed (used for
+     *     horizontal device to avoid confusing UX forcing one unexpectedly).
+     */
+    fun currentVideoOrientation(): AVCaptureVideoOrientation? {
         return when (UIDevice.currentDevice.orientation) {
             UIDeviceOrientation.UIDeviceOrientationPortrait -> AVCaptureVideoOrientationPortrait
             UIDeviceOrientation.UIDeviceOrientationLandscapeLeft -> AVCaptureVideoOrientationLandscapeRight
             UIDeviceOrientation.UIDeviceOrientationLandscapeRight -> AVCaptureVideoOrientationLandscapeLeft
             UIDeviceOrientation.UIDeviceOrientationPortraitUpsideDown -> AVCaptureVideoOrientationPortraitUpsideDown
-            UIDeviceOrientation.UIDeviceOrientationFaceUp -> doNotChange
-            UIDeviceOrientation.UIDeviceOrientationFaceDown -> doNotChange
-            else -> AVCaptureVideoOrientationPortrait // Default to portrait.
+            UIDeviceOrientation.UIDeviceOrientationFaceUp -> null
+            UIDeviceOrientation.UIDeviceOrientationFaceDown -> null
+            else -> AVCaptureVideoOrientationPortrait // Unknown orientation code, assume to portrait.
+        }
+    }
+
+    fun captureFrame() {
+        val settings = AVCapturePhotoSettings()
+        settings.isHighResolutionPhotoEnabled()
+        photoOutput?.capturePhotoWithSettings(settings, delegate = this)
+    }
+
+    override fun captureOutput(
+        output: AVCapturePhotoOutput,
+        didFinishProcessingPhoto: AVCapturePhoto,
+        error: NSError?
+    ) {
+        if (error != null) {
+            onError?.invoke(CameraException.CaptureError(error.localizedDescription))
+        }
+        else {
+            onFrameCapture?.invoke(didFinishProcessingPhoto.fileDataRepresentation())
         }
     }
 }

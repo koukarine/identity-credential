@@ -1,11 +1,35 @@
 package org.multipaz.compose.camera
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+/**
+ * Camera operations API
+ */
+expect class Camera {
+    /**
+     * Starts the camera session.
+     */
+    fun startSession()
 
-@Composable
-expect fun Camera(
-    cameraSelector: CameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA,
-    showPreview: Boolean = true,
-    modifier: Modifier = Modifier,
-)
+    /**
+     * Stops the camera session.
+     */
+    fun stopSession()
+
+    /**
+     * Initiates the process of retrieving the image data.
+     *
+     * @return The result of the image capture operation (data or error).
+     */
+    suspend fun takeCameraFrame(): CameraWorkResult
+
+    /**
+     * Adds a listener for camera frame capture event (generic data).
+     *
+     * @param listener The new listener receiving image data as [ByteArray].
+     */
+    fun addFrameCaptureListener(listener: (ByteArray) -> Unit)
+
+    /**
+     * Initialize/reset camera plugins (i.e.face recognition, face matcher, bar code scanner).
+     */
+    fun initializePlugins()
+}
