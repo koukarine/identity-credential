@@ -55,6 +55,7 @@ import org.multipaz.facedetection.DetectedFace
 import org.multipaz.facedetection.FaceContourType
 import org.multipaz.facedetection.FaceLandmarkType
 import org.multipaz.facedetection.detectFaces
+import org.multipaz.selfiecheck.SelfieCheck
 import org.multipaz.util.Logger
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -79,34 +80,7 @@ fun SelfieCheckScreen(
             modifier = Modifier.wrapContentSize(),
             title = { Text(text = "Camera dialog") },
             text = {
-                Column(
-                    Modifier.wrapContentSize(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.8f) // Occupy 80% of the screen width for the circle's diameter
-                            .aspectRatio(1f)   // Make it a square for a perfect circle clip
-                            .clip(CircleShape) // Apply circular clipping
-                            .clipToBounds(),   // Ensure content outside circle is not drawn
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Camera(
-                            modifier = Modifier,
-                            cameraSelection = DEFAULT_FRONT_CAMERA,
-                            showCameraPreview = true,
-                            captureResolution = MEDIUM,
-                            onFrameCaptured = { cameraFrame ->
-                                // Note: this is a suspend-func called on an I/O thread managed by Camera() composable
-                                lastSeenFaces.value = detectFaces(cameraFrame)
-                                transformationMatrix.value = cameraFrame.previewTransformation
-                                isLandscape.value = cameraFrame.rotation == 90 || cameraFrame.rotation == 270
-                            }
-                        )
-                        CameraPreviewOverlay(lastSeenFaces.value, transformationMatrix.value)
-                    }
-                }
+                SelfieCheck()
             },
             onDismissRequest = { showSelfieDialog.value = null },
             confirmButton = {},
