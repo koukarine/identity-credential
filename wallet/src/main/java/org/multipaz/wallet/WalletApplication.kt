@@ -56,6 +56,7 @@ import org.multipaz.util.Logger
 import org.multipaz.wallet.dynamicregistration.PowerOffReceiver
 import org.multipaz.wallet.logging.EventLogger
 import kotlinx.datetime.Clock
+import org.multipaz.android.direct_access.DirectAccess
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.trustmanagement.TrustManagerLocal
@@ -467,7 +468,7 @@ class WalletApplication : Application() {
             androidKeystoreAttestKeyAvailable = keystoreCapabilities.attestKeySupported,
             androidKeystoreStrongBoxAvailable = keystoreCapabilities.strongBoxSupported,
             androidIsEmulator = isProbablyRunningOnEmulator,
-            directAccessSupported = false //DirectAccess.isDirectAccessSupported,
+            directAccessSupported = DirectAccess.isDirectAccessSupported,
         )
     }
 
