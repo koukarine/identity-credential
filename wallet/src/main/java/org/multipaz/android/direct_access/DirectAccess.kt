@@ -107,6 +107,10 @@ object DirectAccess {
      */
     val isDirectAccessSupported: Boolean
         get() {
+            _isDirectAccessSupported = true
+            return true
+
+
             if (_isDirectAccessSupported != null) {
                 return _isDirectAccessSupported!!
             }
@@ -342,6 +346,9 @@ object DirectAccess {
         documentSlot: Int
     ): Pair<X509CertChain, ByteArray> {
         val response: ByteArray?
+
+        val success = clearDocumentSlot(0)
+
         try {
             transport.closeConnection()
             transport.openConnection()

@@ -1036,12 +1036,12 @@ class IssuingAuthorityState(
 
         if (documentType == documentTypeRepository.getDocumentTypeForMdoc(MDL_DOCTYPE)!!) {
             val portrait = resources.getRawResource(if (jpeg2k) {
-                "img_erika_portrait.jpf"
+                "img_erika_portrait.jpg"
             } else {
                 "img_erika_portrait.jpg"
             })!!.toByteArray()
             val signatureOrUsualMark = resources.getRawResource(if (jpeg2k) {
-                "img_erika_signature.jpf"
+                "img_erika_signature.jpg"
             } else {
                 "img_erika_signature.jpg"
             })!!.toByteArray()

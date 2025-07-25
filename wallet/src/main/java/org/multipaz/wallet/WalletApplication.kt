@@ -207,7 +207,10 @@ class WalletApplication : Application() {
             secureAreaProvider,
             settingsModel
         ) {
-            getWalletApplicationInformation()
+            Logger.d(TAG, "DirectAccess request")
+            getWalletApplicationInformation().also {
+                Logger.d(TAG, "DirectAccess = ${this.getWalletApplicationInformation().directAccessSupported}")
+            }
         }
 
         /*

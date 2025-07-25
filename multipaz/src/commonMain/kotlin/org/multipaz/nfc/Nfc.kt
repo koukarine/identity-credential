@@ -14,7 +14,8 @@ object Nfc {
     /**
      * The Application ID for the Type 4 Tag NDEF application.
      */
-    val NDEF_APPLICATION_ID = ByteString("D2760000850101".fromHex())
+    ///val NDEF_APPLICATION_ID = ByteString("D2760000850101".fromHex())
+    val NDEF_APPLICATION_ID = ByteString("A000000809434343444B417631".fromHex())
 
     /**
      * The Application ID for ISO mdoc NFC data transfer.

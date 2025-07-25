@@ -93,7 +93,8 @@ class MainActivity : FragmentActivity() {
         // handle intents with schema openid-credential-offer://
         handleOid4vciCredentialOfferIntent(intent)
         // route aids to host by default
-        AidRegistrationUtil.routeAidsToHost(this)
+        ///AidRegistrationUtil.routeAidsToHost(this)
+        ///AidRegistrationUtil.routeAidsToSe(this)
 
         setContent {
             IdentityCredentialTheme {

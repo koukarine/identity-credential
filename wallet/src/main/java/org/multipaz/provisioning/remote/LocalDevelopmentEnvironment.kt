@@ -242,7 +242,7 @@ internal class LocalDevelopmentEnvironment(
         private fun bitmapData(resourceId: Int, format: Bitmap.CompressFormat): ByteString {
             val baos = ByteArrayOutputStream()
             BitmapFactory.decodeResource(context.resources, resourceId)
-                .compress(format, 90, baos)
+                .compress(format, 40, baos)
             return ByteString(baos.toByteArray())
         }
     }
