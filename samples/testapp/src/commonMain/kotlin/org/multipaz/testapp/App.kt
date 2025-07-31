@@ -116,6 +116,7 @@ import org.multipaz.certext.fromCbor
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.compose.provisioning.Provisioning
 import org.multipaz.document.AbstractDocumentMetadata
+import org.multipaz.directaccess.DirectAccessCredential
 import org.multipaz.document.DocumentMetadata
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.documenttype.knowntypes.AgeVerification
@@ -345,6 +346,9 @@ class App private constructor (val promptModel: PromptModel) {
             secureAreaRepository = secureAreaRepository
         ) {
             //setTableSpec(testDocumentTableSpec)
+            addCredentialImplementation(DirectAccessCredential.CREDENTIAL_TYPE) {
+                    document -> DirectAccessCredential(document)
+            }
         }
     }
 
