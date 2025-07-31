@@ -118,6 +118,7 @@ import org.multipaz.compose.provisioning.Provisioning
 import org.multipaz.crypto.SigningKey
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.document.AbstractDocumentMetadata
+import org.multipaz.directaccess.DirectAccessCredential
 import org.multipaz.document.DocumentMetadata
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.documenttype.knowntypes.AgeVerification
@@ -343,6 +344,9 @@ class App private constructor (val promptModel: PromptModel) {
             secureAreaRepository = secureAreaRepository
         ) {
             //setTableSpec(testDocumentTableSpec)
+            addCredentialImplementation(DirectAccessCredential.CREDENTIAL_TYPE) {
+                    document -> DirectAccessCredential(document)
+            }
         }
     }
 
@@ -422,7 +426,7 @@ class App private constructor (val promptModel: PromptModel) {
         )
     }
 
-    private val bundledReaderRootKey: EcPrivateKey by lazy {
+    val bundledReaderRootKey: EcPrivateKey by lazy {
         val readerRootKeyPub = EcPublicKey.fromPem(
             """
                     -----BEGIN PUBLIC KEY-----
@@ -443,6 +447,32 @@ class App private constructor (val promptModel: PromptModel) {
                     -----END PRIVATE KEY-----
                 """.trimIndent().trim(),
             readerRootKeyPub
+        )
+    }
+
+    val readerKeyForBackend: EcPublicKey by lazy {
+        EcPublicKey.fromPem(
+            """
+                -----BEGIN PUBLIC KEY-----
+                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEPhRfmNpsMu5GiMSn2uxmQARs/why6Peo
+                3jAFRirpSI6ShQsw4tRv7vxiCieb6wlHCrIMn2bFhOOWqWJbw+kN+6VBl6NmjZAa
+                qkH0k8ieSsIGiXlP7RNSzSCGQTllAGxU
+                -----END PUBLIC KEY----- 
+            """.trimIndent().trim(),
+            EcCurve.P384
+        )
+    }
+
+    val readerKeyForUntrustedDevices: EcPublicKey by lazy {
+        EcPublicKey.fromPem(
+            """
+                -----BEGIN PUBLIC KEY-----
+                MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAE6ooTntOVt5yHclX+8hOJhyYs+7bKH3Jo
+                jU6J8GLDygWycEUx2uwDBPk6AHzYTzGhGfN5QVEwYILE1DUoVadS+ccz0voytLRi
+                ZEdp8vflMoDxrVGcRDrpRiuSPGSHft+R
+                -----END PUBLIC KEY----- 
+            """.trimIndent().trim(),
+            EcCurve.P384
         )
     }
 
