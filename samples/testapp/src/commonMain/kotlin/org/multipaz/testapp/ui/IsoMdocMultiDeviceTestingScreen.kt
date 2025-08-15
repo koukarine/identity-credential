@@ -1,16 +1,26 @@
 package org.multipaz.testapp.ui
 
+import androidx.compose.animation.core.copy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
@@ -36,8 +46,9 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
-import org.multipaz.testapp.ui.ScanQrCodeDialog
-import org.multipaz.testapp.ui.ShowQrCodeDialog
+import org.multipaz.testapp.multidevicetests.formatData
+import org.multipaz.testapp.multidevicetests.saveToWorksheet
+import org.multipaz.testapp.multidevicetests.shareCsvFile
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
 
@@ -60,6 +71,8 @@ fun IsoMdocMultiDeviceTestingScreen(
     val multiDeviceTestServer = remember { mutableStateOf<MultiDeviceTestsServer?>(null) }
     val multiDeviceTestResults = remember { mutableStateOf<Results>(Results()) }
 
+    val isTestingWorksheetUpdated = remember { mutableStateOf(false) }
+    val deviceNames = remember { mutableStateOf("") }
     if (multiDeviceTestsServerShowButton.value != null) {
         val url = multiDeviceTestsServerShowButton.value!!
         Logger.i(TAG, "URL is $url")
@@ -99,6 +112,7 @@ fun IsoMdocMultiDeviceTestingScreen(
                                     showToast
                                 )
                             } catch (error: Throwable) {
+                                Logger.e(TAG, "Can't start the client.", error)
                                 showToast("Error: ${error.message}")
                             }
                         }
@@ -203,9 +217,29 @@ fun IsoMdocMultiDeviceTestingScreen(
                     onClick = {
                         multiDeviceTestServer.value?.job?.cancel()
                         multiDeviceTestServer.value = null
+                        isTestingWorksheetUpdated.value = false
                     }
                 ) {
                     if (r.numIterationsTotal > 0 && r.numIterationsCompleted == r.numIterationsTotal) {
+                        if (deviceNames.value.isNotEmpty() && !isTestingWorksheetUpdated.value) {
+                            isTestingWorksheetUpdated.value = true
+                            Logger.saveToWorksheet(
+                                tag = r.plan.name,
+                                data = formatData(
+                                    devices = deviceNames.value,
+                                    runsAttempted = r.numIterationsTotal,
+                                    runsSucceeded = r.numIterationsSuccessful,
+                                    transactionTimeAverage = r.transactionTime.avg,
+                                    transactionTimeMin = r.transactionTime.min,
+                                    transactionTimeMax = r.transactionTime.max,
+                                    transactionTimeSigma = r.transactionTime.stdDev,
+                                    scanTimeAverage = r.scanningTime.avg,
+                                    scanTimeMin = r.scanningTime.min,
+                                    scanTimeMax = r.scanningTime.max,
+                                    scanTimeSigma = r.scanningTime.stdDev,
+                                )
+                            )
+                        }
                         Text("Close")
                     } else {
                         Text("Cancel")
@@ -256,6 +290,33 @@ fun IsoMdocMultiDeviceTestingScreen(
                             }
                         )
                     }
+                }
+
+                item {
+                    Text("Set device names (as server:client) to write the result to the file " +
+                            "(Documents/multidevicetests.csv). Empty field means disable writing.")
+                    TextField(
+                        value = deviceNames.value,
+                        onValueChange = { deviceNames.value = it },
+                        label = {  },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        trailingIcon = {
+                            Row {
+                                IconButton(onClick = {
+                                    shareCsvFile()
+                                }) {
+                                    Icon(Icons.Filled.Share, contentDescription = "Share")
+                                }
+                                IconButton(onClick = {
+                                    deviceNames.value = ""
+                                }) {
+                                    Icon(Icons.Filled.Clear, contentDescription = "Clear")
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }

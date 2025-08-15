@@ -27,7 +27,6 @@ import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import org.multipaz.util.Logger.LogPrinter.Level
@@ -72,7 +71,7 @@ object Logger {
     private var fileWriter: Sink? = null
     private var fileWriterPath: Path? = null
 
-    fun startLoggingToFile(logPath: Path) {
+    fun startLoggingToFile(logPath: Path, overwrite: Boolean = true) {
         if (fileWriter != null) {
             w(TAG, "startLoggingToFile: Already logging to file $fileWriterPath")
             fileWriter!!.close()
@@ -80,7 +79,7 @@ object Logger {
             fileWriterPath = null
         }
         d(TAG, "Starting logging to file $fileWriterPath")
-        fileWriter = SystemFileSystem.sink(logPath).buffered()
+        fileWriter = SystemFileSystem.sink(logPath, append = !overwrite).buffered()
         fileWriterPath = logPath
     }
 
