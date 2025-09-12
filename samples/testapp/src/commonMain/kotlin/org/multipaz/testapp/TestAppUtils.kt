@@ -47,12 +47,14 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import multipazproject.samples.testapp.generated.resources.av18_card_art
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.documenttype.knowntypes.AgeOver18Verification
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
@@ -146,7 +148,8 @@ object TestAppUtils {
         DrivingLicense.getDocumentType(),
         PhotoID.getDocumentType(),
         EUPersonalID.getDocumentType(),
-        UtopiaMovieTicket.getDocumentType()
+        UtopiaMovieTicket.getDocumentType(),
+        AgeOver18Verification.getDocumentType(),
     )
 
     suspend fun provisionTestDocuments(
@@ -386,6 +389,20 @@ object TestAppUtils {
                     "Erika",
                     "Utopia! Utopia! Utopia!",
                     Res.drawable.movie_ticket_cart_art
+                )
+                provisionDocument(
+                    documentStore,
+                    secureArea,
+                    secureAreaCreateKeySettingsFunc,
+                    dsKey,
+                    dsCert,
+                    deviceKeyAlgorithm,
+                    deviceKeyMacAlgorithm,
+                    numCredentialsPerDomain,
+                    AgeOver18Verification.getDocumentType(),
+                    "Erika",
+                    "Erika's EU Age Over 18",
+                    Res.drawable.av18_card_art
                 )
                 return null
             }

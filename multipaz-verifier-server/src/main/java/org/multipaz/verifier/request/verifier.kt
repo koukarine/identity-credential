@@ -79,6 +79,7 @@ import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
+import org.multipaz.documenttype.knowntypes.AgeOver18Verification
 import org.multipaz.documenttype.knowntypes.IDPass
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.ZkSystemSpec
@@ -287,6 +288,7 @@ private val documentTypeRepo: DocumentTypeRepository by lazy {
     repo.addDocumentType(UtopiaNaturalization.getDocumentType())
     repo.addDocumentType(UtopiaMovieTicket.getDocumentType())
     repo.addDocumentType(IDPass.getDocumentType())
+    repo.addDocumentType(AgeOver18Verification.getDocumentType())
     repo
 }
 
