@@ -50,7 +50,6 @@ import kotlinx.datetime.plus
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -63,7 +62,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
-import net.minidev.json.JSONArray
 import net.minidev.json.JSONObject
 import net.minidev.json.JSONStyle
 import org.multipaz.asn1.ASN1
@@ -79,6 +77,7 @@ import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.putCborMap
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
+import org.multipaz.documenttype.knowntypes.AgeVerification
 import org.multipaz.documenttype.knowntypes.IDPass
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.ZkSystemSpec
@@ -287,6 +286,7 @@ private val documentTypeRepo: DocumentTypeRepository by lazy {
     repo.addDocumentType(UtopiaNaturalization.getDocumentType())
     repo.addDocumentType(UtopiaMovieTicket.getDocumentType())
     repo.addDocumentType(IDPass.getDocumentType())
+    repo.addDocumentType(AgeVerification.getDocumentType())
     repo
 }
 

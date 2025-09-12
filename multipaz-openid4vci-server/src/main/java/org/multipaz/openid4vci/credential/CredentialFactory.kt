@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.X509CertChain
+import org.multipaz.documenttype.knowntypes.AgeVerification
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.openid4vci.request.wellKnownOpenidCredentialIssuer
 
@@ -59,6 +60,7 @@ internal interface CredentialFactory {
                     CredentialFactoryMdocPid(),
                     CredentialFactoryUtopiaNaturatization(),
                     CredentialFactoryUtopiaMovieTicket(),
+                    CredentialFactoryAgeVerification(),
                 )
                 factories.forEach { it.initialize() }
                 registeredFactories = RegisteredFactories(
@@ -94,6 +96,7 @@ internal data class Openid4VciFormatMdoc(val docType: String) : Openid4VciFormat
 
 internal val openId4VciFormatMdl = Openid4VciFormatMdoc(DrivingLicense.MDL_DOCTYPE)
 internal val openId4VciFormatPid = Openid4VciFormatMdoc(EUPersonalID.EUPID_DOCTYPE)
+internal val openId4VciFormatAv = Openid4VciFormatMdoc(AgeVerification.AV_DOCTYPE)
 
 internal data class Openid4VciFormatSdJwt(val vct: String) : Openid4VciFormat() {
     override val id: String get() = "dc+sd-jwt"
