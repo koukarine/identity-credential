@@ -58,6 +58,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.crypto.Algorithm
+import org.multipaz.documenttype.knowntypes.AgeVerification
 import org.multipaz.legacyprovisioning.Proofing
 import org.multipaz.legacyprovisioning.Registration
 import org.multipaz.legacyprovisioning.RequestCredentials
@@ -191,6 +192,7 @@ class Openid4VciIssuingAuthorityState(
             addDocumentType(EUCertificateOfResidence.getDocumentType())
             addDocumentType(UtopiaNaturalization.getDocumentType())
             addDocumentType(UtopiaMovieTicket.getDocumentType())
+            addDocumentType(AgeVerification.getDocumentType())
         }
     }
 

@@ -117,6 +117,7 @@ import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.document.AbstractDocumentMetadata
 import org.multipaz.document.DocumentMetadata
 import org.multipaz.document.buildDocumentStore
+import org.multipaz.documenttype.knowntypes.AgeVerification
 import org.multipaz.documenttype.knowntypes.IDPass
 import org.multipaz.facematch.FaceMatchLiteRtModel
 import org.multipaz.mdoc.zkp.ZkSystemRepository
@@ -302,6 +303,7 @@ class App private constructor (val promptModel: PromptModel) {
         documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
         documentTypeRepository.addDocumentType(UtopiaMovieTicket.getDocumentType())
         documentTypeRepository.addDocumentType(IDPass.getDocumentType())
+        documentTypeRepository.addDocumentType(AgeVerification.getDocumentType())
     }
 
     private suspend fun documentStoreInit() {

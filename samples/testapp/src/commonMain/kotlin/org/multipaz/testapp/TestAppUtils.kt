@@ -47,15 +47,16 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import multipazproject.samples.testapp.generated.resources.av18_card_art
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.getSystemResourceEnvironment
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.documenttype.knowntypes.AgeVerification
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.sdjwt.SdJwt
-import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.testapp.ui.DocumentCreationMode
 import org.multipaz.util.truncateToWholeSeconds
 import kotlin.collections.component1
@@ -147,7 +148,8 @@ object TestAppUtils {
         DrivingLicense.getDocumentType(),
         PhotoID.getDocumentType(),
         EUPersonalID.getDocumentType(),
-        UtopiaMovieTicket.getDocumentType()
+        UtopiaMovieTicket.getDocumentType(),
+        AgeVerification.getDocumentType(),
     )
 
     suspend fun provisionTestDocuments(
@@ -387,6 +389,20 @@ object TestAppUtils {
                     "Erika",
                     "Utopia! Utopia! Utopia!",
                     Res.drawable.movie_ticket_cart_art
+                )
+                provisionDocument(
+                    documentStore,
+                    secureArea,
+                    secureAreaCreateKeySettingsFunc,
+                    dsKey,
+                    dsCert,
+                    deviceKeyAlgorithm,
+                    deviceKeyMacAlgorithm,
+                    numCredentialsPerDomain,
+                    AgeVerification.getDocumentType(),
+                    "Erika",
+                    "Erika's Age Verification Credential",
+                    Res.drawable.av18_card_art
                 )
                 return null
             }
