@@ -4,6 +4,8 @@ Bug fixes and new features are welcome! We use GitHub and request that changes a
 submitted as pull requests. When uploading a PR, it will be reviewed by maintainers,
 here are some pointers about what we're looking for:
 
+## Contributing to Code
+
 - A PR should not contain unrelated changes
   - In particular do not include unrelated changes even despite how tempting it is to e.g. change
     `check(!something.isEmpty())` to `check(something.isNotEmpty())` in a unrelated file,
@@ -24,3 +26,9 @@ here are some pointers about what we're looking for:
 
 Before uploading a PR, it's generally a good idea to manually review the commit (using
 e.g. `git show`) and check that it meets all the requirements above.
+
+## Contributing to Documentation
+
+The Multipaz developer website at [developer.multipaz.org](https://developer.multipaz.org) is also open source! 
+For documentation contributions, see the [website repository](https://github.com/openwallet-foundation/multipaz-developer-website).
+

@@ -120,7 +120,7 @@ which is a simple Android mDL reader application.
 
 ## Developer Resources
 
-[developer.multipaz.org](developer.multipaz.org) is a comprehensive resource for developers.
+[developer.multipaz.org](developer.multipaz.org) is a comprehensive resource for developers. **The entire developer website is open source** and contributions are welcome!
 
 ### Documentation
 
@@ -139,6 +139,7 @@ which is a simple Android mDL reader application.
 ### Community & Contribution
 
 - [Contributing Guide](https://developer.multipaz.org/contributing/contributing)
+- [Website Contribution Guide](https://github.com/openwallet-foundation/multipaz-developer-website)
 - [Blog](https://developer.multipaz.org/blog)
 - [Discord](https://discord.com/invite/openwalletfoundation)
 
