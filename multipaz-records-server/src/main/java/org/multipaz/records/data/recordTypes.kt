@@ -342,4 +342,26 @@ val recordTypes = RecordType.buildMap {
             icon = Icon.IMAGE,
         )
     }
+    addComplex("wholesale") {
+        displayName = "Utopia Wholesale Loyalty ID"
+        addString(
+            identifier = "membership_number",
+            displayName = "Membership ID",
+            description = "Person identifier of the Loyalty ID holder",
+            icon = Icon.NUMBERS,
+        )
+        addDate(
+            identifier = "issue_date",
+            displayName = "Date of Issue",
+            description = "Date when the Loyalty ID was issued",
+            icon = Icon.TODAY,
+        )
+        addDate(
+            identifier = "expiry_date",
+            displayName = "Date of Expiry",
+            description = "Date when the Loyalty ID expires",
+            icon = Icon.TODAY,
+        )
+
+    }
 }

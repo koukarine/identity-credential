@@ -59,6 +59,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.crypto.Algorithm
 import org.multipaz.documenttype.knowntypes.AgeVerification
+import org.multipaz.documenttype.knowntypes.LoyaltyID
 import org.multipaz.legacyprovisioning.Proofing
 import org.multipaz.legacyprovisioning.Registration
 import org.multipaz.legacyprovisioning.RequestCredentials
@@ -193,6 +194,7 @@ class Openid4VciIssuingAuthorityState(
             addDocumentType(UtopiaNaturalization.getDocumentType())
             addDocumentType(UtopiaMovieTicket.getDocumentType())
             addDocumentType(AgeVerification.getDocumentType())
+            addDocumentType(LoyaltyID.getDocumentType())
         }
     }
 

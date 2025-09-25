@@ -9,6 +9,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.av18_card_art
+import multipazproject.samples.testapp.generated.resources.card_utopia_wholesale
 import multipazproject.samples.testapp.generated.resources.driving_license_card_art
 import multipazproject.samples.testapp.generated.resources.movie_ticket_cart_art
 import multipazproject.samples.testapp.generated.resources.photo_id_card_art
@@ -40,6 +41,7 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentCannedRequest
 import org.multipaz.documenttype.DocumentType
 import org.multipaz.documenttype.knowntypes.AgeVerification
+import org.multipaz.documenttype.knowntypes.LoyaltyID
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.documenttype.knowntypes.PhotoID
@@ -155,6 +157,7 @@ object TestAppUtils {
         EUPersonalID.getDocumentType(),
         UtopiaMovieTicket.getDocumentType(),
         AgeVerification.getDocumentType(),
+        LoyaltyID.getDocumentType(),
     )
 
     suspend fun provisionTestDocuments(
@@ -408,6 +411,20 @@ object TestAppUtils {
                     "Erika",
                     "Erika's Age Verification Credential",
                     Res.drawable.av18_card_art
+                )
+                provisionDocument(
+                    documentStore,
+                    secureArea,
+                    secureAreaCreateKeySettingsFunc,
+                    dsKey,
+                    dsCert,
+                    deviceKeyAlgorithm,
+                    deviceKeyMacAlgorithm,
+                    numCredentialsPerDomain,
+                    LoyaltyID.getDocumentType(),
+                    "Erika",
+                    "Erika's Loyalty ID",
+                    Res.drawable.card_utopia_wholesale
                 )
                 return null
             }

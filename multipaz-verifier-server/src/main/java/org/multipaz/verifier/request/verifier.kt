@@ -80,6 +80,7 @@ import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509KeyUsage
 import org.multipaz.documenttype.knowntypes.AgeVerification
 import org.multipaz.documenttype.knowntypes.IDPass
+import org.multipaz.documenttype.knowntypes.LoyaltyID
 import org.multipaz.mdoc.request.DocRequestInfo
 import org.multipaz.mdoc.request.ZkRequest
 import org.multipaz.mdoc.request.buildDeviceRequestSuspend
@@ -294,6 +295,7 @@ private val documentTypeRepo: DocumentTypeRepository by lazy {
     repo.addDocumentType(UtopiaMovieTicket.getDocumentType())
     repo.addDocumentType(IDPass.getDocumentType())
     repo.addDocumentType(AgeVerification.getDocumentType())
+    repo.addDocumentType(LoyaltyID.getDocumentType())
     repo
 }
 
