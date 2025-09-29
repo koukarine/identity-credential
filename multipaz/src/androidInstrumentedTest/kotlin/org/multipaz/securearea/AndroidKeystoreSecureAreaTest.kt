@@ -49,6 +49,7 @@ import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import kotlin.time.Instant.Companion.fromEpochMilliseconds
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.device.AndroidKeyMintSecurityLevel
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -565,9 +566,9 @@ class AndroidKeystoreSecureAreaTest {
         if (!TestUtil.isRunningOnEmulator) {
             Assert.assertEquals(
                 if (useStrongBox) {
-                    AndroidAttestationExtensionParser.SecurityLevel.STRONG_BOX
+                    AndroidKeyMintSecurityLevel.STRONG_BOX
                 } else {
-                    AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT
+                    AndroidKeyMintSecurityLevel.TRUSTED_ENVIRONMENT
                 },
                 securityLevel
             )
@@ -653,9 +654,9 @@ class AndroidKeystoreSecureAreaTest {
         if (!TestUtil.isRunningOnEmulator) {
             Assert.assertEquals(
                 if (useStrongBox) {
-                    AndroidAttestationExtensionParser.SecurityLevel.STRONG_BOX
+                    AndroidKeyMintSecurityLevel.STRONG_BOX
                 } else {
-                    AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT
+                    AndroidKeyMintSecurityLevel.TRUSTED_ENVIRONMENT
                 },
                 securityLevel
             )

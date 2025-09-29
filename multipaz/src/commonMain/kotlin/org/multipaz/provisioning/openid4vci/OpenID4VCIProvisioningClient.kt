@@ -10,6 +10,7 @@ import io.ktor.client.statement.readBytes
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import io.ktor.http.authority
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLParameter
 import io.ktor.http.parameters
@@ -21,6 +22,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -37,6 +40,9 @@ import org.multipaz.provisioning.KeyBindingType
 import org.multipaz.provisioning.ProvisioningClient
 import org.multipaz.provisioning.ProvisioningMetadata
 import org.multipaz.rpc.backend.BackendEnvironment
+import org.multipaz.securearea.CreateKeySettings
+import org.multipaz.securearea.KeyInfo
+import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
@@ -60,6 +66,10 @@ internal class OpenID4VCIProvisioningClient(
     var keyChallenge: String? = null
     var redirectState: String? = null
     var txRetry = false
+
+    var walletAttestation: String? = null
+
+    var walletAttestationKeyAlias: String? = null
 
     override suspend fun getMetadata(): ProvisioningMetadata {
         val fullMetadata = issuerConfiguration.provisioningMetadata
@@ -228,6 +238,23 @@ internal class OpenID4VCIProvisioningClient(
             pkceCodeVerifier!!.encodeToByteArray()
         ).toBase64Url()
 
+        // Attempt to use scope. We prefer scopes to authorization_details, but it is only safe
+        // if scope and credential format identify this credential id uniquely.
+        val credentialMap = issuerConfiguration.provisioningMetadata.credentials
+        val configurationId = credentialOffer.configurationId
+        val credentialMetadata = credentialMap[configurationId]!!
+        val scope = issuerConfiguration.credentialConfigurations[configurationId]!!.scope
+            ?.let { provisionalScope ->
+                for ((id, config) in issuerConfiguration.credentialConfigurations) {
+                    if (provisionalScope == config.scope &&
+                        credentialMetadata.format.formatId == credentialMap[id]!!.format.formatId) {
+                        Logger.w(TAG, "Scope does not uniquely identify credential for configuration id '$configurationId'")
+                        return@let null
+                    }
+                }
+                provisionalScope
+            }
+
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
 
         var dpopNonce: String? = null
@@ -241,12 +268,16 @@ internal class OpenID4VCIProvisioningClient(
                 dpopNonce = dpopNonce,
                 accessToken = null
             )
-            val walletAttestation = if (authorizationConfiguration.useClientAssertion) {
+            val walletAttestationPoP = if (authorizationConfiguration.useClientAssertion) {
                 null
             } else {
-                OpenIDUtil.createWalletAttestation(
+                // If client assertion is not used, we always send wallet attestation.
+                val keyInfo = obtainWalletAttestation()
+                val endpoint = Url(authorizationConfiguration.pushedAuthorizationRequestEndpoint)
+                OpenIDUtil.createWalletAttestationPoP(
                     clientId = clientPreferences.clientId,
-                    endpoint = authorizationConfiguration.pushedAuthorizationRequestEndpoint
+                    keyInfo = keyInfo,
+                    endpointUrl = endpoint,
                 )
             }
             val clientAssertion = if (authorizationConfiguration.useClientAssertion) {
@@ -256,18 +287,19 @@ internal class OpenID4VCIProvisioningClient(
             }
             val redirectState = createUniqueStateValue()
             this.redirectState = redirectState
+
             response = httpClient.submitForm(
                 url = authorizationConfiguration.pushedAuthorizationRequestEndpoint,
                 formParameters = parameters {
-                    val scope = issuerConfiguration
-                        .credentialConfigurations[credentialOffer.configurationId]!!.scope
                     if (scope != null) {
                         append("scope", scope)
                     } else {
-                        // TODO: this does not seem right, the spec says that authorization_details
-                        //  should be used instead, but this seems to be needed for the current
-                        //  conformance test suite.
-                        append("scope", "default")
+                        append("authorization_details", buildJsonArray {
+                            addJsonObject {
+                                put("type", "openid_credential")
+                                put("credential_configuration_id", configurationId)
+                            }
+                        }.toString())
                     }
                     if (credentialOffer is CredentialOffer.AuthorizationCode) {
                         val issuerState = credentialOffer.issuerState
@@ -294,8 +326,8 @@ internal class OpenID4VCIProvisioningClient(
                     append("DPoP", dpop)
                     //append("Content-Type", "application/x-www-form-urlencoded")
                     if (walletAttestation != null) {
-                        append("OAuth-Client-Attestation", walletAttestation.attestationJwt)
-                        append("OAuth-Client-Attestation-PoP", walletAttestation.attestationPopJwt)
+                        append("OAuth-Client-Attestation", walletAttestation!!)
+                        append("OAuth-Client-Attestation-PoP", walletAttestationPoP!!)
                     }
                 }
             }
@@ -315,6 +347,27 @@ internal class OpenID4VCIProvisioningClient(
         val responseText = response.readBytes().decodeToString()
         val parsedResponse = Json.parseToJsonElement(responseText).jsonObject
         return parsedResponse.string("request_uri")
+    }
+
+    private suspend fun obtainWalletAttestation(): KeyInfo {
+        val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
+        val endpoint = Url(authorizationConfiguration.pushedAuthorizationRequestEndpoint)
+        // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-01
+        // Section 6.1. "Client Instance Tracking Across Authorization Servers" recommends
+        // using different keys for different servers. We go even further and obtain a fresh
+        // wallet attestation for every session. Perhaps this should be made configurable; in
+        // such case walletAttestation and walletAttestationKeyAlias should be cached based on
+        // endpoint.authority value.
+        val keyInfo = secureArea.createKey(
+            alias = null,
+            createKeySettings = CreateKeySettings(
+                nonce = endpoint.authority.encodeToByteString()
+            )
+        )
+        walletAttestationKeyAlias = keyInfo.alias
+        val backend = BackendEnvironment.getInterface(OpenID4VCIBackend::class)!!
+        walletAttestation = backend.createJwtWalletAttestation(keyInfo.attestation)
+        return keyInfo
     }
 
     private suspend fun processOauthResponse(parameterizedRedirectUrl: String) {
@@ -361,12 +414,21 @@ internal class OpenID4VCIProvisioningClient(
                 dpopNonce = authorizationDPoPNonce,
                 accessToken = null
             )
-            val walletAttestation = if (authorizationConfiguration.useClientAssertion) {
+            val walletAttestationPoP = if (authorizationConfiguration.useClientAssertion) {
                 null
             } else {
-                OpenIDUtil.createWalletAttestation(
+                val keyInfo = if (walletAttestation == null) {
+                    // For pre-authorized code case, this is where the session is initialized.
+                    obtainWalletAttestation()
+                } else {
+                    val secureArea =
+                        BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
+                    secureArea.getKeyInfo(walletAttestationKeyAlias!!)
+                }
+                OpenIDUtil.createWalletAttestationPoP(
                     clientId = clientPreferences.clientId,
-                    endpoint = authorizationConfiguration.pushedAuthorizationRequestEndpoint
+                    keyInfo = keyInfo,
+                    endpointUrl = Url(authorizationConfiguration.tokenEndpoint),
                 )
             }
             val clientAssertion = if (authorizationConfiguration.useClientAssertion) {
@@ -381,8 +443,7 @@ internal class OpenID4VCIProvisioningClient(
                     if (refreshToken != null) {
                         append("grant_type", "refresh_token")
                         append("refresh_token", refreshToken)
-                    }
-                    if (authorizationCode != null) {
+                    } else if (authorizationCode != null) {
                         append("grant_type", "authorization_code")
                         append("code", authorizationCode)
                     } else if (preauthorizedCode != null) {
@@ -391,6 +452,12 @@ internal class OpenID4VCIProvisioningClient(
                         if (txCode != null) {
                             append("tx_code", txCode)
                         }
+                        append("authorization_details", buildJsonArray {
+                            addJsonObject {
+                                put("type", "openid_credential")
+                                put("credential_configuration_id", credentialOffer.configurationId)
+                            }
+                        }.toString())
                     }
                     if (codeVerifier != null) {
                         append("code_verifier", codeVerifier)
@@ -410,8 +477,8 @@ internal class OpenID4VCIProvisioningClient(
                     append("DPoP", dpop)
                     append("Content-Type", "application/x-www-form-urlencoded")
                     if (walletAttestation != null) {
-                        append("OAuth-Client-Attestation", walletAttestation.attestationJwt)
-                        append("OAuth-Client-Attestation-PoP", walletAttestation.attestationPopJwt)
+                        append("OAuth-Client-Attestation", walletAttestation!!)
+                        append("OAuth-Client-Attestation-PoP", walletAttestationPoP!!)
                     }
                 }
             }
