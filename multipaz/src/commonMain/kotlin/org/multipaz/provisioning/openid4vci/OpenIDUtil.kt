@@ -11,6 +11,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.SigningKey
+import org.multipaz.jwt.buildJwt
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyInfo
@@ -86,33 +88,13 @@ internal object OpenIDUtil {
         return backend.createJwtClientAssertion(endpoint)
     }
 
-    suspend fun createWalletAttestation(
+    suspend fun createWalletAttestationPoP(
         clientId: String,
-        endpoint: String,
+        keyInfo: KeyInfo,
+        endpointUrl: Url,
         nonce: String? = null
-    ): WalletAttestation {
+    ): String {
         val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
-        // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-01
-        // Section 6.1. "Client Instance Tracking Across Authorization Servers" recommends using
-        // different keys for different servers. Keys are stored in the secure area using alias in
-        // the following format: server address prefixed by "openid-wallet-attestation:".
-        val endpointUrl = Url(endpoint)
-        val targetServerAddress = endpointUrl.authority
-        val keyAlias = "openid-wallet-attestation:$targetServerAddress"
-        val keyInfo = try {
-            secureArea.getKeyInfo(keyAlias)
-        } catch (err: IllegalArgumentException) {
-            Logger.e(TAG, "Client attestation key not found, creating a new one", err)
-            secureArea.createKey(
-                alias = keyAlias,
-                createKeySettings = CreateKeySettings(
-                    nonce = targetServerAddress.encodeToByteString()
-                )
-            )
-        }
-        val backend = BackendEnvironment.getInterface(OpenID4VCIBackend::class)!!
-        val clientAttestation = backend.createJwtWalletAttestation(keyInfo.attestation)
-
         val alg = keyInfo.publicKey.curve.defaultSigningAlgorithmFullySpecified
         val header = buildJsonObject {
             put("typ", "oauth-client-attestation-pop+jwt")
@@ -129,10 +111,6 @@ internal object OpenIDUtil {
         }.toString().encodeToByteArray().toBase64Url()
         val message = "$header.$body"
         val sig = secureArea.sign(keyInfo.alias, message.encodeToByteArray(), null)
-        val clientAttestationPoP = "$message.${sig.toCoseEncoded().toBase64Url()}"
-
-        return WalletAttestation(clientAttestation, clientAttestationPoP)
+        return "$message.${sig.toCoseEncoded().toBase64Url()}"
     }
-
-    class WalletAttestation(val attestationJwt: String, val attestationPopJwt: String)
 }
