@@ -37,14 +37,7 @@ $EDITOR samples/testapp/iosApp/DeveloperConfig.xcconfig
 ```
 In the opened editor, add the Team ID assigned to you by Apple.
 
-You also need to install [CocoaPods](https://cocoapods.org/) and set up your environment so
-it's functional (e.g. the `pod` program is in PATH). Then you need to run
-
-```shell
-pod install
-```
-
-Once this is done, you can open `TestApp.xcworkspace` in Xcode, select TestApp and a target
+Then, you can open `/samples/testapp/iosApp/TestApp.xcodeproj` in Xcode, select TestApp and a target
 (e.g. an iPhone), and run the app.
 
 # Linux and Windows

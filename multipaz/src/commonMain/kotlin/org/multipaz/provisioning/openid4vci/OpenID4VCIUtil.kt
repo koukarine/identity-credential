@@ -9,8 +9,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
-import org.multipaz.crypto.SigningKey
-import org.multipaz.jwt.buildJwt
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyInfo
