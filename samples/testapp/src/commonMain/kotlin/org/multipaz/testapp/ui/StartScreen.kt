@@ -13,41 +13,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.multipaz.testapp.DocumentModel
-import org.multipaz.testapp.Platform
-import org.multipaz.testapp.platform
+import kotlinx.coroutines.launch
 import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.about_screen_title
 import multipazproject.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.certificate_viewer_examples_title
-import multipazproject.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import multipazproject.samples.testapp.generated.resources.cloud_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.consent_prompt_screen_title
+import multipazproject.samples.testapp.generated.resources.dc_request_title
 import multipazproject.samples.testapp.generated.resources.document_store_screen_title
 import multipazproject.samples.testapp.generated.resources.iso_mdoc_multi_device_testing_title
 import multipazproject.samples.testapp.generated.resources.iso_mdoc_proximity_reading_title
 import multipazproject.samples.testapp.generated.resources.iso_mdoc_proximity_sharing_title
 import multipazproject.samples.testapp.generated.resources.nfc_screen_title
 import multipazproject.samples.testapp.generated.resources.notifications_title
+import multipazproject.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import multipazproject.samples.testapp.generated.resources.qr_codes_screen_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
 import multipazproject.samples.testapp.generated.resources.secure_enclave_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.software_secure_area_screen_title
-import multipazproject.samples.testapp.generated.resources.face_detection_title
-import multipazproject.samples.testapp.generated.resources.selfie_check_title
-import multipazproject.samples.testapp.generated.resources.face_match_title
-import kotlinx.coroutines.launch
-import multipazproject.samples.testapp.generated.resources.dc_request_title
-import multipazproject.samples.testapp.generated.resources.barcode_scanning_title
-import multipazproject.samples.testapp.generated.resources.camera_title
 import multipazproject.samples.testapp.generated.resources.trusted_issuers_screen_title
 import multipazproject.samples.testapp.generated.resources.trusted_verifiers_screen_title
 import org.jetbrains.compose.resources.stringResource
 import org.multipaz.compose.cards.InfoCard
 import org.multipaz.compose.cards.WarningCard
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
+import org.multipaz.testapp.DocumentModel
+import org.multipaz.testapp.Platform
+import org.multipaz.testapp.platform
 
 @Composable
 fun StartScreen(
@@ -74,11 +69,6 @@ fun StartScreen(
     onClickRichText: () -> Unit = {},
     onClickNotifications: () -> Unit = {},
     onClickScreenLock: () -> Unit = {},
-    onClickCamera: () -> Unit = {},
-    onClickFaceDetection: () -> Unit = {},
-    onClickBarcodeScanning: () -> Unit = {},
-    onClickSelfieCheck: () -> Unit = {},
-    onClickFaceMatch: () -> Unit = {}
 ) {
     val blePermissionState = rememberBluetoothPermissionState()
     val coroutineScope = rememberCoroutineScope()
@@ -259,36 +249,6 @@ fun StartScreen(
                 item {
                     TextButton(onClick = onClickScreenLock) {
                         Text(stringResource(Res.string.screen_lock_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickCamera) {
-                        Text(stringResource(Res.string.camera_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickFaceDetection) {
-                        Text(stringResource(Res.string.face_detection_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickFaceMatch) {
-                        Text(stringResource(Res.string.face_match_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickSelfieCheck) {
-                        Text(stringResource(Res.string.selfie_check_title))
-                    }
-                }
-
-                item {
-                    TextButton(onClick = onClickBarcodeScanning) {
-                        Text(stringResource(Res.string.barcode_scanning_title))
                     }
                 }
             }
