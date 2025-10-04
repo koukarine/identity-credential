@@ -25,7 +25,7 @@ import org.multipaz.asn1.ASN1Set
 import org.multipaz.asn1.ASN1TaggedObject
 import org.multipaz.crypto.X509Cert
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.device.AndroidKeyMintSecurityLevel
+import org.multipaz.device.AndroidKeystoreSecurityLevel
 
 // This code is based on https://github.com/google/android-key-attestation
 class AndroidAttestationExtensionParser(cert: X509Cert) {
@@ -37,10 +37,10 @@ class AndroidAttestationExtensionParser(cert: X509Cert) {
         RED
     }
 
-    val attestationSecurityLevel: AndroidKeyMintSecurityLevel
+    val attestationSecurityLevel: AndroidKeystoreSecurityLevel
     val attestationVersion: Int
 
-    val keymasterSecurityLevel: AndroidKeyMintSecurityLevel
+    val keymasterSecurityLevel: AndroidKeystoreSecurityLevel
     val keymasterVersion: Int
 
     val attestationChallenge: ByteArray
@@ -446,11 +446,11 @@ class AndroidAttestationExtensionParser(cert: X509Cert) {
             return authorizationMap
         }
 
-        private fun securityLevelToEnum(securityLevel: Int): AndroidKeyMintSecurityLevel {
+        private fun securityLevelToEnum(securityLevel: Int): AndroidKeystoreSecurityLevel {
             return when (securityLevel) {
-                KM_SECURITY_LEVEL_SOFTWARE -> AndroidKeyMintSecurityLevel.SOFTWARE
-                KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT -> AndroidKeyMintSecurityLevel.TRUSTED_ENVIRONMENT
-                KM_SECURITY_LEVEL_STRONG_BOX -> AndroidKeyMintSecurityLevel.STRONG_BOX
+                KM_SECURITY_LEVEL_SOFTWARE -> AndroidKeystoreSecurityLevel.SOFTWARE
+                KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT -> AndroidKeystoreSecurityLevel.TRUSTED_ENVIRONMENT
+                KM_SECURITY_LEVEL_STRONG_BOX -> AndroidKeystoreSecurityLevel.STRONG_BOX
                 else -> throw IllegalArgumentException("Invalid security level.")
             }
         }

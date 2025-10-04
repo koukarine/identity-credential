@@ -19,7 +19,7 @@ class DeviceAttestationIosTest {
                 iosAppIdentifiers = setOf("74HWMG89B3.com.sorototkin.testapp5"),
                 androidGmsAttestation = false,
                 androidVerifiedBootGreen = false,
-                androidRequiredKeyMintSecurityLevel = AndroidKeyMintSecurityLevel.SOFTWARE,
+                androidRequiredKeyMintSecurityLevel = AndroidKeystoreSecurityLevel.SOFTWARE,
                 androidAppSignatureCertificateDigests = setOf(),
                 androidAppPackageNames = setOf()
             )

@@ -3,7 +3,7 @@ package org.multipaz.util
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.device.AndroidKeyMintSecurityLevel
+import org.multipaz.device.AndroidKeystoreSecurityLevel
 
 private const val TAG = "validateAndroidKeyAttestation"
 
@@ -12,7 +12,7 @@ fun validateAndroidKeyAttestation(
     challenge: ByteString?,
     requireGmsAttestation: Boolean,
     requireVerifiedBootGreen: Boolean,
-    requireKeyMintSecurityLevel: AndroidKeyMintSecurityLevel,
+    requireKeyMintSecurityLevel: AndroidKeystoreSecurityLevel,
     requireAppSignatureCertificateDigests: Set<ByteString>,
     requireAppPackages: Set<String>
 ) {
@@ -47,7 +47,7 @@ fun validateAndroidKeyAttestation(
     }
 
     if (requireVerifiedBootGreen) {
-        // Verified Boot state must VERIFIED
+        // Verified Boot state must be GREEN
         check(
             parser.verifiedBootState ==
                     AndroidAttestationExtensionParser.VerifiedBootState.GREEN

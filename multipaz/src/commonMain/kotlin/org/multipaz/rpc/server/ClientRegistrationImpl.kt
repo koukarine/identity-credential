@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.annotation.CborSerializable
-import org.multipaz.device.AndroidKeyMintSecurityLevel
+import org.multipaz.device.AndroidKeystoreSecurityLevel
 import org.multipaz.device.DeviceAttestation
 import org.multipaz.device.DeviceAttestationException
 import org.multipaz.device.DeviceAttestationValidationData
@@ -81,11 +81,11 @@ class ClientRegistrationImpl(
                         androidAppSignatureCertificateDigests =
                             android.byteStringSet("app_signature_certificate_digests"),
                         androidAppPackageNames = android.stringSet("app_packages"),
-                        androidRequiredKeyMintSecurityLevel = when (android.string("key_mint_security_level", "tee")!!) {
-                            "software" -> AndroidKeyMintSecurityLevel.SOFTWARE
-                            "tee" -> AndroidKeyMintSecurityLevel.TRUSTED_ENVIRONMENT
-                            "strong_box" -> AndroidKeyMintSecurityLevel.STRONG_BOX
-                            else -> throw IllegalStateException("key_mint_security_level invalid")
+                        androidRequiredKeyMintSecurityLevel = when (android.string("keystore_security_level", "tee")!!) {
+                            "software" -> AndroidKeystoreSecurityLevel.SOFTWARE
+                            "tee" -> AndroidKeystoreSecurityLevel.TRUSTED_ENVIRONMENT
+                            "strong_box" -> AndroidKeystoreSecurityLevel.STRONG_BOX
+                            else -> throw IllegalStateException("keystore_security_level invalid")
                         }
                     )
                 }

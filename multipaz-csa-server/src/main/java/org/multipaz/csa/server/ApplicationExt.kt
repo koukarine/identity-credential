@@ -7,7 +7,6 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.call
 import io.ktor.server.request.host
 import io.ktor.server.request.receive
-import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -22,7 +21,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.multipaz.asn1.ASN1
-import org.multipaz.device.AndroidKeyMintSecurityLevel
+import org.multipaz.device.AndroidKeystoreSecurityLevel
 import org.multipaz.server.ServerConfiguration
 import org.multipaz.server.ServerEnvironment
 import org.multipaz.util.Logger
@@ -163,10 +162,10 @@ private fun createCloudSecureArea(
         androidVerifiedBootGreen = settings.androidRequireVerifiedBootGreen,
         androidAppSignatureCertificateDigests = settings.androidRequireAppSignatureCertificateDigests,
         androidAppPackageNames = settings.androidRequireAppPackageNames,
-        androidKeyMintSecurityLevel = when (settings.androidRequireKeyMintSecurityLevel) {
-            "strong_box" -> AndroidKeyMintSecurityLevel.STRONG_BOX
-            "software" -> AndroidKeyMintSecurityLevel.SOFTWARE
-            else -> AndroidKeyMintSecurityLevel.TRUSTED_ENVIRONMENT
+        androidKeystoreSecurityLevel = when (settings.androidRequireKeystoreSecurityLevel) {
+            "strong_box" -> AndroidKeystoreSecurityLevel.STRONG_BOX
+            "software" -> AndroidKeystoreSecurityLevel.SOFTWARE
+            else -> AndroidKeystoreSecurityLevel.TRUSTED_ENVIRONMENT
         },
         openid4vciKeyAttestationIssuer = settings.openid4vciKeyAttestationIssuer,
         openid4vciKeyAttestationKeyStorage = settings.openid4vciKeyAttestationKeyStorage,

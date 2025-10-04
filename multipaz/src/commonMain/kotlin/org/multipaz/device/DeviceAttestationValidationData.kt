@@ -44,7 +44,7 @@ data class DeviceAttestationValidationData(
     /**
      * Minimally acceptable security level on Android.
      */
-    val androidRequiredKeyMintSecurityLevel: AndroidKeyMintSecurityLevel,
+    val androidRequiredKeyMintSecurityLevel: AndroidKeystoreSecurityLevel,
 
     /**
      * Allowed list of Android applications signing certificates.

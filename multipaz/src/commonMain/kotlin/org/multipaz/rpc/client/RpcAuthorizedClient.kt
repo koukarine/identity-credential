@@ -30,6 +30,13 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 
+/**
+ * Helper class to create an RPC connection to a server that authenticates the app that makes
+ * a connection.
+ *
+ * Once a connection is created, [dispatcher] and [notifier] can be used to create client
+ * RPC stubs. [rpcClientId] uniquely identifies this app instance to an RPC server.
+ */
 class RpcAuthorizedClient private constructor(
     val dispatcher: RpcDispatcher,
     val notifier: RpcNotifier,
@@ -41,6 +48,16 @@ class RpcAuthorizedClient private constructor(
     }
 
     companion object {
+        /**
+         * Connects to a secure RPC server using ktor HTTP client.
+         *
+         * @param exceptionMap contains exceptions that are used in this RPC connection
+         * @param httpClientEngine ktor HTTP client engine to use
+         * @param url RPC server endpoint
+         * @param secureArea [SecureArea] that stores private key that identifies this client
+         * @param storage [Storage] that holds information identifying this client across sessions
+         * @return object that can be used to create stub objects for RPC interfaces
+         */
         suspend fun connect(
             exceptionMap: RpcExceptionMap,
             httpClientEngine: HttpClientEngineFactory<*>,
@@ -55,6 +72,9 @@ class RpcAuthorizedClient private constructor(
             storage
         )
 
+        /**
+         * Connects to a secure RPC server using given [HttpTransport] implementation.
+         */
         suspend fun connect(
             exceptionMap: RpcExceptionMap,
             httpTransport: HttpTransport,
@@ -110,8 +130,8 @@ class RpcAuthorizedClient private constructor(
             if (connectionDataBytes == null) {
                 return Pair(connectionData.clientId, authorizedDispatcher)
             }
-            // Existing client, need freshness check.
 
+            // Existing client, need freshness check.
             val authCheck = ClientCheckStub(
                 endpoint = "client_check",
                 dispatcher = authorizedDispatcher,

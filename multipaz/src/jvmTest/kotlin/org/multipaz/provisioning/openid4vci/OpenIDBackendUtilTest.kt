@@ -28,7 +28,7 @@ class OpenIDBackendUtilTest {
         val signingKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val env = TestBackendEnvironment("client", signingKey.publicKey)
         withContext(env) {
-            val assertionJwt = OpenIDBackendUtil.createJwtClientAssertion(
+            val assertionJwt = OpenID4VCIBackendUtil.createJwtClientAssertion(
                 signingKey = SigningKey.NamedExplicit("client", signingKey),
                 clientId = CLIENT_ID,
                 tokenUrl = "http://example.com",
@@ -54,7 +54,7 @@ class OpenIDBackendUtilTest {
         val attestedKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey
         val env = TestBackendEnvironment("wallet", signingKey.publicKey)
         withContext(env) {
-            val attestationJwt = OpenIDBackendUtil.createWalletAttestation(
+            val attestationJwt = OpenID4VCIBackendUtil.createWalletAttestation(
                 signingKey = SigningKey.NamedExplicit("wallet", signingKey),
                 clientId = CLIENT_ID,
                 attestationIssuer = "wallet",
@@ -89,7 +89,7 @@ class OpenIDBackendUtilTest {
                 alias = null,
                 createKeySettings = CreateKeySettings()
             )
-            val attestationJwt = OpenIDBackendUtil.createJwtKeyAttestation(
+            val attestationJwt = OpenID4VCIBackendUtil.createJwtKeyAttestation(
                 signingKey = SigningKey.NamedExplicit("key", signingKey),
                 attestationIssuer = "key",
                 keysToAttest = listOf(attestedKeyInfo.attestation),

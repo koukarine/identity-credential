@@ -1,11 +1,9 @@
 package org.multipaz.provisioning.openid4vci
 
 import io.ktor.http.Url
-import io.ktor.http.authority
 import io.ktor.http.protocolWithAuthority
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -17,12 +15,11 @@ import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyInfo
 import org.multipaz.securearea.SecureAreaProvider
-import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
 import kotlin.time.Clock
 
-internal object OpenIDUtil {
+internal object OpenID4VCIUtil {
     const val TAG = "OpenidUtil"
 
     private val keyCreationMutex = Mutex()

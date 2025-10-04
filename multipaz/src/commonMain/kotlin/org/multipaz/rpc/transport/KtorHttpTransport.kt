@@ -11,7 +11,13 @@ import io.ktor.client.statement.readBytes
 import kotlinx.coroutines.CancellationException
 import kotlinx.io.bytestring.ByteString
 
-internal class KtorHttpTransport(
+/**
+ * [HttpTransport] implemented using ktor http client library.
+ *
+ * @param engine HTTP engine to use
+ * @param baseUrl RPC server endpoint
+ */
+class KtorHttpTransport(
     engine: HttpClientEngineFactory<*>,
     private val baseUrl: String
 ): HttpTransport {

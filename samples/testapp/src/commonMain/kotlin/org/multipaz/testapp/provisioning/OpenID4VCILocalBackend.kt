@@ -1,23 +1,22 @@
 package org.multipaz.testapp.provisioning
 
 import org.multipaz.crypto.SigningKey
-import org.multipaz.crypto.X509CertChain
 import org.multipaz.provisioning.openid4vci.OpenID4VCIBackend
-import org.multipaz.provisioning.openid4vci.OpenIDBackendUtil
+import org.multipaz.provisioning.openid4vci.OpenID4VCIBackendUtil
 import org.multipaz.securearea.KeyAttestation
 
 class OpenID4VCILocalBackend: OpenID4VCIBackend {
     override suspend fun getClientId(): String = CLIENT_ID
     
     override suspend fun createJwtClientAssertion(tokenUrl: String): String =
-        OpenIDBackendUtil.createJwtClientAssertion(
+        OpenID4VCIBackendUtil.createJwtClientAssertion(
             signingKey = clientAssertionKey,
             clientId = CLIENT_ID,
             tokenUrl = tokenUrl,
         )
 
     override suspend fun createJwtWalletAttestation(keyAttestation: KeyAttestation): String =
-        OpenIDBackendUtil.createWalletAttestation(
+        OpenID4VCIBackendUtil.createWalletAttestation(
             signingKey = attestationKey,
             clientId = CLIENT_ID,
             attestationIssuer = attestationKey.subject,
@@ -32,7 +31,7 @@ class OpenID4VCILocalBackend: OpenID4VCIBackend {
         challenge: String,
         userAuthentication: List<String>?,
         keyStorage: List<String>?
-    ): String = OpenIDBackendUtil.createJwtKeyAttestation(
+    ): String = OpenID4VCIBackendUtil.createJwtKeyAttestation(
         signingKey = attestationKey,
         attestationIssuer = attestationKey.subject,
         keysToAttest = keyAttestations,

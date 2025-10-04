@@ -27,8 +27,8 @@ class CloudSecureAreaSettings(private val conf: Configuration) {
     val androidRequireAppPackageNames: List<String>
         get() = getStringList("android_require_app_package_names")
 
-    val androidRequireKeyMintSecurityLevel: String?
-        get() = getString("android_require_key_mint_security_level")
+    val androidRequireKeystoreSecurityLevel: String?
+        get() = getString("android_require_keystore_security_level")
 
     val cloudSecureAreaRekeyingIntervalSeconds: Int
         get() = getInt("cloud_secure_area_rekeying_interval_seconds", 300)

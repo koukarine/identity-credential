@@ -6,7 +6,7 @@ import org.multipaz.cbor.annotation.CborSerializable
 import org.multipaz.crypto.SigningKey
 import org.multipaz.device.DeviceAttestationAndroid
 import org.multipaz.provisioning.openid4vci.OpenID4VCIBackend
-import org.multipaz.provisioning.openid4vci.OpenIDBackendUtil
+import org.multipaz.provisioning.openid4vci.OpenID4VCIBackendUtil
 import org.multipaz.rpc.annotation.RpcState
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Configuration
@@ -30,7 +30,7 @@ class OpenID4VCIBackendImpl: OpenID4VCIBackend, RpcAuthInspector by RpcAuthBacke
     }
 
     override suspend fun createJwtClientAssertion(tokenUrl: String): String =
-        OpenIDBackendUtil.createJwtClientAssertion(
+        OpenID4VCIBackendUtil.createJwtClientAssertion(
             signingKey = clientAssertionKey,
             clientId = clientId,
             tokenUrl = tokenUrl,
@@ -38,7 +38,7 @@ class OpenID4VCIBackendImpl: OpenID4VCIBackend, RpcAuthInspector by RpcAuthBacke
 
     override suspend fun createJwtWalletAttestation(keyAttestation: KeyAttestation): String {
         validateKeyAttestations(listOf(keyAttestation))
-        return OpenIDBackendUtil.createWalletAttestation(
+        return OpenID4VCIBackendUtil.createWalletAttestation(
             signingKey = walletAttestationKey,
             clientId = clientId,
             attestationIssuer = walletAttestationKey.subject,
@@ -56,7 +56,7 @@ class OpenID4VCIBackendImpl: OpenID4VCIBackend, RpcAuthInspector by RpcAuthBacke
         keyStorage: List<String>?
     ): String {
         validateKeyAttestations(keyAttestations, challenge.encodeToByteString())
-        return OpenIDBackendUtil.createJwtKeyAttestation(
+        return OpenID4VCIBackendUtil.createJwtKeyAttestation(
             signingKey = keyAttestationKey,
             attestationIssuer = keyAttestationKey.subject,
             keysToAttest = keyAttestations,

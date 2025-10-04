@@ -146,7 +146,7 @@ internal class OpenID4VCIProvisioningClient(
             issuerConfiguration.provisioningMetadata.credentials[credentialOffer.configurationId]!!
         val keyProofs = buildKeyProofs(keyInfo)
         while (true) {
-            val dpop = OpenIDUtil.generateDPoP(
+            val dpop = OpenID4VCIUtil.generateDPoP(
                 clientId = clientPreferences.clientId,
                 requestUrl = issuerConfiguration.credentialEndpoint,
                 dpopNonce = issuerDPoPNonce,
@@ -262,7 +262,7 @@ internal class OpenID4VCIProvisioningClient(
 
         while (true) {
             // retry loop for DPoP nonce
-            val dpop = OpenIDUtil.generateDPoP(
+            val dpop = OpenID4VCIUtil.generateDPoP(
                 clientId = clientPreferences.clientId,
                 requestUrl = authorizationConfiguration.pushedAuthorizationRequestEndpoint,
                 dpopNonce = dpopNonce,
@@ -274,14 +274,14 @@ internal class OpenID4VCIProvisioningClient(
                 // If client assertion is not used, we always send wallet attestation.
                 val keyInfo = obtainWalletAttestation()
                 val endpoint = Url(authorizationConfiguration.pushedAuthorizationRequestEndpoint)
-                OpenIDUtil.createWalletAttestationPoP(
+                OpenID4VCIUtil.createWalletAttestationPoP(
                     clientId = clientPreferences.clientId,
                     keyInfo = keyInfo,
                     endpointUrl = endpoint,
                 )
             }
             val clientAssertion = if (authorizationConfiguration.useClientAssertion) {
-                OpenIDUtil.createClientAssertion(authorizationConfiguration.tokenEndpoint)
+                OpenID4VCIUtil.createClientAssertion(authorizationConfiguration.tokenEndpoint)
             } else {
                 null
             }
@@ -408,7 +408,7 @@ internal class OpenID4VCIProvisioningClient(
         // When dpop nonce is null, this loop will run twice, first request will return with error,
         // but will provide fresh, dpop nonce and the second request will get fresh access data.
         while (true) {
-            val dpop = OpenIDUtil.generateDPoP(
+            val dpop = OpenID4VCIUtil.generateDPoP(
                 clientId = clientPreferences.clientId,
                 requestUrl = authorizationConfiguration.tokenEndpoint,
                 dpopNonce = authorizationDPoPNonce,
@@ -425,14 +425,14 @@ internal class OpenID4VCIProvisioningClient(
                         BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
                     secureArea.getKeyInfo(walletAttestationKeyAlias!!)
                 }
-                OpenIDUtil.createWalletAttestationPoP(
+                OpenID4VCIUtil.createWalletAttestationPoP(
                     clientId = clientPreferences.clientId,
                     keyInfo = keyInfo,
                     endpointUrl = Url(authorizationConfiguration.tokenEndpoint),
                 )
             }
             val clientAssertion = if (authorizationConfiguration.useClientAssertion) {
-                OpenIDUtil.createClientAssertion(authorizationConfiguration.tokenEndpoint)
+                OpenID4VCIUtil.createClientAssertion(authorizationConfiguration.tokenEndpoint)
             } else {
                 null
             }

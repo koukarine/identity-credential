@@ -24,37 +24,69 @@ import org.multipaz.securearea.SecureAreaRepository
  * encapsulates these variants so the code can be written in more generic way.
  */
 sealed class SigningKey {
+    /** Signature algorithm */
     abstract val algorithm: Algorithm
+    /** Public key that corresponds to the private key used for signing */
     abstract val publicKey: EcPublicKey
+    /**
+     * Entity to which the key belongs; key id for named key, common name for the keys with
+     * the certificate chain.
+     */
     abstract val subject: String
 
+    /** Generates signature for the given message using this key. */
     abstract suspend fun sign(message: ByteArray): EcSignature
+    /** Adds the relevant data to JWT header. */
     abstract fun addToJwtHeader(header: JsonObjectBuilder)
 
+    /**
+     * Implemented by [SigningKey] where the private key is explicitly given.
+     *
+     * Keys of this type are vulnerable to copying.
+     */
     interface Explicit {
+        /** Private key that is used for signing. */
         val privateKey: EcPrivateKey
+        /** Signature algorithm */
         val algorithm: Algorithm
     }
 
+    /** Implemented by [SigningKey] where the private key resides in [SecureArea] */
     interface SecureAreaBased {
+        /** Alias of the private key that is used for signing */
         val alias: String
+        /** [SecureArea] that holds the private key */
         val secureArea: SecureArea
+        /** [KeyUnlockData] that should be used to generate a signature */
         val keyUnlockData: KeyUnlockData?
+        /** Key data */
         val keyInfo: KeyInfo
     }
 
     interface Named {
+        /** Key identifier, corresponds to `kid` header value in JWT */
         val keyId: String
+        /** Signature algorithm */
         val algorithm: Algorithm
+        /** Public key that corresponds to the private key used for signing */
         val publicKey: EcPublicKey
     }
 
     interface Certified {
+        /**
+         * Certificate chain for the key, corresponds to `x5c` header value in JWT.
+         *
+         * Public key in the first certificate chain must correspond to the private key
+         * used for signing. Certificate chain must be valid.
+         */
         val certChain: X509CertChain
+        /** Signature algorithm */
         val algorithm: Algorithm
+        /** Public key that corresponds to the private key used for signing */
         val publicKey: EcPublicKey
     }
 
+    /** [SigningKey] which is both [SigningKey.Certified] and [SigningKey.Explicit]. */
     data class CertifiedExplicit(
         override val certChain: X509CertChain,
         override val privateKey: EcPrivateKey,
@@ -67,6 +99,7 @@ sealed class SigningKey {
             addToJwtHeader(this, header)
     }
 
+    /** [SigningKey] which is both [SigningKey.Named] and [SigningKey.Explicit]. */
     data class NamedExplicit(
         override val keyId: String,
         override val privateKey: EcPrivateKey,
@@ -79,6 +112,7 @@ sealed class SigningKey {
             addToJwtHeader(this, header)
     }
 
+    /** [SigningKey] which is both [SigningKey.Certified] and [SigningKey.SecureAreaBased]. */
     data class CertifiedSecureAreaBased(
         override val certChain: X509CertChain,
         override val alias: String,
@@ -94,6 +128,7 @@ sealed class SigningKey {
             addToJwtHeader(this, header)
     }
 
+    /** [SigningKey] which is both [SigningKey.Named] and [SigningKey.SecureAreaBased]. */
     data class NamedSecureAreaBased(
         override val keyId: String,
         override val alias: String,
@@ -142,7 +177,7 @@ sealed class SigningKey {
         }
 
         /**
-         * Parse json string that describes the private key.
+         * Parses json string that describes the private key.
          *
          * Private key can either be given as JWK object or as a reference to a
          * [SecureArea]-resident key using `secure_area` and `alias` fields. In either case, key
@@ -159,7 +194,7 @@ sealed class SigningKey {
         )
 
         /**
-         * Parse json object that describes the private key.
+         * Parses json object that describes the private key.
          */
         suspend fun parse(
             json: JsonElement,
@@ -187,7 +222,7 @@ sealed class SigningKey {
         }
 
         /**
-         * Parse json string that describes the private key for software-based private key.
+         * Parses json string that describes the private key for software-based private key.
          *
          * Similar to [parse], but does not handle [SecureArea]-based keys. It is suitable for
          * calling in non-coroutine contexts.
@@ -196,7 +231,7 @@ sealed class SigningKey {
             parseExplicit(Json.parseToJsonElement(json))
 
         /**
-         * Parse json object that describes the private key for software-based private key.
+         * Parses json object that describes the private key for software-based private key.
          *
          * Similar to [parse], but does not handle [SecureArea]-based keys. It is suitable for
          * calling in non-coroutine contexts.

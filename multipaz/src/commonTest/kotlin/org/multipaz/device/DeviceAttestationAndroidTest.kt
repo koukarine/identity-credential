@@ -21,7 +21,7 @@ class DeviceAttestationAndroidTest {
                 iosAppIdentifiers = setOf(),
                 androidGmsAttestation = true,
                 androidVerifiedBootGreen = true,
-                androidRequiredKeyMintSecurityLevel = AndroidKeyMintSecurityLevel.TRUSTED_ENVIRONMENT,
+                androidRequiredKeyMintSecurityLevel = AndroidKeystoreSecurityLevel.TRUSTED_ENVIRONMENT,
                 androidAppSignatureCertificateDigests = setOf(
                     ByteString("VEpxrWMf2GFLy2_HHTuN7xlW5fy6mKhVAmRADo4aLh0".fromBase64Url())
                 ),
@@ -45,7 +45,7 @@ class DeviceAttestationAndroidTest {
                 attestationChallenge = ATTESTATION_CHALLENGE_EMULATOR_PIXEL3A.encodeToByteString(),
                 iosReleaseBuild = false,
                 iosAppIdentifiers = setOf(),
-                androidRequiredKeyMintSecurityLevel = AndroidKeyMintSecurityLevel.SOFTWARE,
+                androidRequiredKeyMintSecurityLevel = AndroidKeystoreSecurityLevel.SOFTWARE,
                 androidGmsAttestation = false,
                 androidVerifiedBootGreen = false,
                 androidAppSignatureCertificateDigests = setOf(
