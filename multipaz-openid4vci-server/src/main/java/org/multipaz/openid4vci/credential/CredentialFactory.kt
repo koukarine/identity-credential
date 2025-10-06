@@ -11,7 +11,7 @@ import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.documenttype.knowntypes.AgeVerification
 import org.multipaz.documenttype.knowntypes.EUPersonalID
-import org.multipaz.documenttype.knowntypes.LoyaltyID
+import org.multipaz.documenttype.knowntypes.Loyalty
 import org.multipaz.openid4vci.request.wellKnownOpenidCredentialIssuer
 
 /**
@@ -62,7 +62,7 @@ internal interface CredentialFactory {
                     CredentialFactoryUtopiaNaturatization(),
                     CredentialFactoryUtopiaMovieTicket(),
                     CredentialFactoryAgeVerification(),
-                    CredentialFactoryUtopiaLoyaltyID(),
+                    CredentialFactoryUtopiaLoyalty(),
                 )
                 factories.forEach { it.initialize() }
                 registeredFactories = RegisteredFactories(
@@ -99,7 +99,7 @@ internal data class Openid4VciFormatMdoc(val docType: String) : Openid4VciFormat
 internal val openId4VciFormatMdl = Openid4VciFormatMdoc(DrivingLicense.MDL_DOCTYPE)
 internal val openId4VciFormatPid = Openid4VciFormatMdoc(EUPersonalID.EUPID_DOCTYPE)
 internal val openId4VciFormatAv = Openid4VciFormatMdoc(AgeVerification.AV_DOCTYPE)
-internal val openId4VciFormatLoyaltyId = Openid4VciFormatMdoc(LoyaltyID.LOYALTY_ID_DOCTYPE)
+internal val openId4VciFormatLoyalty = Openid4VciFormatMdoc(Loyalty.LOYALTY_DOCTYPE)
 
 internal data class Openid4VciFormatSdJwt(val vct: String) : Openid4VciFormat() {
     override val id: String get() = "dc+sd-jwt"

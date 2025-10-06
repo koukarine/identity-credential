@@ -350,6 +350,12 @@ val recordTypes = RecordType.buildMap {
             description = "Person identifier of the Loyalty ID holder",
             icon = Icon.NUMBERS,
         )
+        addString(
+            identifier = "tier",
+            displayName = "Tier",
+            description = "Membership tier (basic, silver, gold, platinum, elite)",
+            icon = Icon.STARS,
+        )
         addDate(
             identifier = "issue_date",
             displayName = "Date of Issue",
