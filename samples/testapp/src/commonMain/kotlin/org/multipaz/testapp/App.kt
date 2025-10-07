@@ -315,7 +315,7 @@ class App private constructor (val promptModel: PromptModel) {
     }
 
     private suspend fun settingsInit() {
-        settingsModel = TestAppSettingsModel.create(Platform.storage)
+        settingsModel = TestAppSettingsModel.create(Platform.nonBackedUpStorage)
     }
 
     private suspend fun documentTypeRepositoryInit() {
@@ -330,7 +330,7 @@ class App private constructor (val promptModel: PromptModel) {
     }
 
     private suspend fun documentStoreInit() {
-        softwareSecureArea = SoftwareSecureArea.create(Platform.storage)
+        softwareSecureArea = SoftwareSecureArea.create(Platform.nonBackedUpStorage)
         secureAreaRepository = SecureAreaRepository.Builder()
             .add(softwareSecureArea)
             .add(Platform.getSecureArea())
@@ -351,7 +351,7 @@ class App private constructor (val promptModel: PromptModel) {
             }
             .build()
         documentStore = buildDocumentStore(
-            storage = Platform.storage,
+            storage = Platform.nonBackedUpStorage,
             secureAreaRepository = secureAreaRepository
         ) {
             //setTableSpec(testDocumentTableSpec)
@@ -381,7 +381,7 @@ class App private constructor (val promptModel: PromptModel) {
             documentMetadataInitializer = App::initializeDocumentMetadata
         )
         provisioningSupport = ProvisioningSupport(
-            storage = Platform.storage,
+            storage = Platform.nonBackedUpStorage,
             secureArea = Platform.getSecureArea(),
         )
         provisioningSupport.init()
@@ -490,7 +490,7 @@ class App private constructor (val promptModel: PromptModel) {
     private lateinit var keyStorage: StorageTable
 
     private suspend fun keyStorageInit() {
-        keyStorage = Platform.storage.getTable(
+        keyStorage = Platform.nonBackedUpStorage.getTable(
             StorageTableSpec(
                 name = "TestAppKeys",
                 supportPartitions = false,
