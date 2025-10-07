@@ -123,7 +123,7 @@ import org.multipaz.document.AbstractDocumentMetadata
 import org.multipaz.document.DocumentMetadata
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.documenttype.knowntypes.AgeVerification
-import org.multipaz.documenttype.knowntypes.LoyaltyID
+import org.multipaz.documenttype.knowntypes.Loyalty
 import org.multipaz.documenttype.knowntypes.IDPass
 import org.multipaz.facematch.FaceMatchLiteRtModel
 import org.multipaz.mdoc.zkp.ZkSystemRepository
@@ -141,7 +141,6 @@ import org.multipaz.testapp.provisioning.ProvisioningSupport
 import org.multipaz.testapp.ui.DcRequestScreen
 import org.multipaz.util.Platform
 import org.multipaz.testapp.ui.FaceMatchScreen
-import org.multipaz.testapp.ShowResponseMetadata
 import org.multipaz.testapp.ui.ShowResponseScreen
 import org.multipaz.testapp.ui.TrustManagerScreen
 import org.multipaz.testapp.ui.TrustPointViewerScreen
@@ -320,7 +319,7 @@ class App private constructor (val promptModel: PromptModel) {
         documentTypeRepository.addDocumentType(UtopiaMovieTicket.getDocumentType())
         documentTypeRepository.addDocumentType(IDPass.getDocumentType())
         documentTypeRepository.addDocumentType(AgeVerification.getDocumentType())
-        documentTypeRepository.addDocumentType(LoyaltyID.getDocumentType())
+        documentTypeRepository.addDocumentType(Loyalty.getDocumentType())
     }
 
     private suspend fun documentStoreInit() {

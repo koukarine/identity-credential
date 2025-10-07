@@ -1,20 +1,12 @@
 package org.multipaz.openid4vci.credential
 
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
-import kotlinx.datetime.yearsUntil
 import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.RawCbor
-import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tagged
 import org.multipaz.cbor.Tstr
-import org.multipaz.cbor.Uint
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cbor.toDataItemFullDate
@@ -26,14 +18,13 @@ import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.documenttype.knowntypes.LoyaltyID
+import org.multipaz.documenttype.knowntypes.Loyalty
 import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.Resources
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
-import kotlin.random.nextInt
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
@@ -41,7 +32,7 @@ import kotlin.time.Instant
 /**
  * Factory for LoyaltyID credentials according to ISO/IEC TS 23220-4 (E) operational phase - Annex C Photo ID v2
  */
-internal class CredentialFactoryUtopiaLoyaltyID : CredentialFactoryBase() {
+internal class CredentialFactoryUtopiaLoyalty : CredentialFactoryBase() {
     override val offerId: String
         get() = "utopia_wholesale"
 
@@ -49,7 +40,7 @@ internal class CredentialFactoryUtopiaLoyaltyID : CredentialFactoryBase() {
         get() = "wholesale"
 
     override val format: Openid4VciFormat
-        get() = openId4VciFormatLoyaltyId
+        get() = openId4VciFormatLoyalty
 
     override val requireClientAttestation: Boolean get() = false
 
@@ -76,7 +67,6 @@ internal class CredentialFactoryUtopiaLoyaltyID : CredentialFactoryBase() {
         val resources = BackendEnvironment.getInterface(Resources::class)!!
 
         val coreData = data["core"]
-        val dateOfBirth = coreData["birth_date"].asDateString
         val portrait = if (coreData.hasKey("portrait")) {
             coreData["portrait"].asBstr
         } else {
@@ -89,7 +79,7 @@ internal class CredentialFactoryUtopiaLoyaltyID : CredentialFactoryBase() {
         val validUntil = validFrom + 30.days
 
         // Generate an MSO and issuer-signed data for this authentication key.
-        val docType = LoyaltyID.LOYALTY_ID_DOCTYPE
+        val docType = Loyalty.LOYALTY_DOCTYPE
         val msoGenerator = MobileSecurityObjectGenerator(
             Algorithm.SHA256,
             docType,
@@ -97,11 +87,6 @@ internal class CredentialFactoryUtopiaLoyaltyID : CredentialFactoryBase() {
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
 
-        val timeZone = TimeZone.currentSystemDefault()
-        val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
-        // Calculate age-based flags
-        val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
-        val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
         val records = data["records"]
         if (!records.hasKey("wholesale")) {
             throw IllegalArgumentException("No wholesale membership card is issued to this person")
@@ -111,6 +96,11 @@ internal class CredentialFactoryUtopiaLoyaltyID : CredentialFactoryBase() {
             loyaltyIDData["membership_number"].asTstr
         } else {
             (1000000 + Random.nextInt(9000000)).toString()
+        }
+        val tier = if (loyaltyIDData.hasKey("tier")) {
+            loyaltyIDData["tier"].asTstr
+        } else {
+            "basic"
         }
         val issueDate = if (loyaltyIDData.hasKey("issue_date")) {
             loyaltyIDData["issue_date"].asDateString
@@ -125,19 +115,15 @@ internal class CredentialFactoryUtopiaLoyaltyID : CredentialFactoryBase() {
 
         val issuerNamespaces = buildIssuerNamespaces {
             // Combined LoyaltyID namespace (all data elements)
-            addNamespace(LoyaltyID.LOYALTY_ID_NAMESPACE) {
+            addNamespace(Loyalty.LOYALTY_NAMESPACE) {
                 // Core personal data
                 addDataElement("family_name", coreData["family_name"])
                 addDataElement("given_name", coreData["given_name"])
                 addDataElement("portrait", Bstr(portrait))
-                addDataElement("birth_date", dateOfBirth.toDataItemFullDate())
-
-                // Age-based flags
-                addDataElement("age_over_18", if (ageOver18) Simple.TRUE else Simple.FALSE)
-                addDataElement("age_over_21", if (ageOver21) Simple.TRUE else Simple.FALSE)
 
                 // LoyaltyID specific data
                 addDataElement("membership_number", Tstr(membershipId))
+                addDataElement("tier", Tstr(tier))
                 addDataElement("issue_date", issueDate.toDataItemFullDate())
                 addDataElement("expiry_date", expiryDate.toDataItemFullDate())
             }
@@ -190,6 +176,6 @@ internal class CredentialFactoryUtopiaLoyaltyID : CredentialFactoryBase() {
     }
 
     companion object Companion {
-        const val TAG = "CredentialFactoryUtopiaLoyaltyID"
+        const val TAG = "CredentialFactoryUtopiaLoyalty"
     }
 }

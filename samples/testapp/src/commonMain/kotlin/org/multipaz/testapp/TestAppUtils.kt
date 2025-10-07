@@ -41,7 +41,7 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentCannedRequest
 import org.multipaz.documenttype.DocumentType
 import org.multipaz.documenttype.knowntypes.AgeVerification
-import org.multipaz.documenttype.knowntypes.LoyaltyID
+import org.multipaz.documenttype.knowntypes.Loyalty
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.documenttype.knowntypes.PhotoID
@@ -157,7 +157,7 @@ object TestAppUtils {
         EUPersonalID.getDocumentType(),
         UtopiaMovieTicket.getDocumentType(),
         AgeVerification.getDocumentType(),
-        LoyaltyID.getDocumentType(),
+        Loyalty.getDocumentType(),
     )
 
     suspend fun provisionTestDocuments(
@@ -421,7 +421,7 @@ object TestAppUtils {
                     deviceKeyAlgorithm,
                     deviceKeyMacAlgorithm,
                     numCredentialsPerDomain,
-                    LoyaltyID.getDocumentType(),
+                    Loyalty.getDocumentType(),
                     "Erika",
                     "Erika's Loyalty ID",
                     Res.drawable.card_utopia_wholesale
