@@ -6,6 +6,8 @@ import multipazproject.samples.testapp.generated.resources.Res
 import multipazproject.samples.testapp.generated.resources.about_screen_title
 import multipazproject.samples.testapp.generated.resources.android_keystore_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.dc_request_title
+import multipazproject.samples.testapp.generated.resources.barcode_scanning_title
+import multipazproject.samples.testapp.generated.resources.camera_title
 import multipazproject.samples.testapp.generated.resources.certificate_viewer_examples_title
 import multipazproject.samples.testapp.generated.resources.cloud_secure_area_screen_title
 import multipazproject.samples.testapp.generated.resources.consent_prompt_screen_title
@@ -24,9 +26,12 @@ import multipazproject.samples.testapp.generated.resources.credential_viewer_tit
 import multipazproject.samples.testapp.generated.resources.document_store_screen_title
 import multipazproject.samples.testapp.generated.resources.notifications_title
 import multipazproject.samples.testapp.generated.resources.document_viewer_title
+import multipazproject.samples.testapp.generated.resources.face_detection_title
+import multipazproject.samples.testapp.generated.resources.face_match_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
+import multipazproject.samples.testapp.generated.resources.selfie_check_title
 import multipazproject.samples.testapp.generated.resources.settings_screen_title
 import multipazproject.samples.testapp.generated.resources.show_response_title
 import multipazproject.samples.testapp.generated.resources.trust_point_viewer_screen_title
@@ -235,6 +240,31 @@ data object ScreenLockDestination : Destination {
     override val title = Res.string.screen_lock_title
 }
 
+data object CameraDestination : Destination {
+    override val route = "camera"
+    override val title = Res.string.camera_title
+}
+
+data object FaceDetectionDestination : Destination {
+    override val route = "face_detection"
+    override val title = Res.string.face_detection_title
+}
+
+data object BarcodeScanningDestination : Destination {
+    override val route = "BarcodeScanning"
+    override val title = Res.string.barcode_scanning_title
+}
+
+data object SelfieCheckScreenDestination : Destination {
+    override val route = "SelfieCheck"
+    override val title = Res.string.selfie_check_title
+}
+
+data object FaceMatchScreenDestination : Destination {
+    override val route = "FaceMatch"
+    override val title = Res.string.face_match_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
@@ -266,4 +296,9 @@ val appDestinations = listOf(
     RichTextDestination,
     NotificationsDestination,
     ScreenLockDestination,
+    CameraDestination,
+    FaceDetectionDestination,
+    FaceMatchScreenDestination,
+    SelfieCheckScreenDestination,
+    BarcodeScanningDestination,
 )

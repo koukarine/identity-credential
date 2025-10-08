@@ -33,6 +33,8 @@ The project provides libraries written in [Kotlin Multiplatform](https://kotlinl
 - `multipaz-longfellow` bundles the [Google Longfellow-ZK](https://github.com/google/longfellow-zk) library
   and integrates with the core `multipaz` for Zero-Knowledge Proofs
   according to latest available [ISO/IEC 18013-5 Second Edition draft](https://github.com/ISOWG10/ISO-18013).
+- `multipaz-vision` provides barcode scanning, face detection, and face
+  matching.
 
 ## Command-line tool
 
