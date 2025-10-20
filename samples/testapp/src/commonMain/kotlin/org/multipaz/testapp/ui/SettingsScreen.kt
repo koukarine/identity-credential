@@ -20,18 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.launch
 import org.multipaz.crypto.EcCurve
 import org.multipaz.testapp.App
 import org.multipaz.testapp.Platform
 import org.multipaz.testapp.TestAppSettingsModel
 import org.multipaz.testapp.platform
 import org.multipaz.compose.cards.WarningCard
-import org.multipaz.models.digitalcredentials.DigitalCredentials
-import org.multipaz.testapp.platformCryptoInit
+import org.multipaz.digitalcredentials.DigitalCredentials
 import org.multipaz.testapp.platformRestartApp
 
 @Composable

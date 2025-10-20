@@ -7,15 +7,10 @@ import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.interfaces.ECPrivateKey
-import java.security.interfaces.EdECPrivateKey
-import java.security.interfaces.XECPrivateKey
 import java.security.spec.ECGenParameterSpec
 import java.security.spec.ECParameterSpec
 import java.security.spec.ECPrivateKeySpec
-import java.security.spec.EdECPrivateKeySpec
-import java.security.spec.NamedParameterSpec
 import java.security.spec.PKCS8EncodedKeySpec
-import java.security.spec.XECPrivateKeySpec
 
 fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKey =
     when (curve) {
@@ -34,13 +29,13 @@ fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKe
         EcCurve.ED25519,
         EcCurve.ED448 -> {
             val pub = publicKey.toEcPublicKey(curve) as EcPublicKeyOkp
-            val d = getDerEncodedPrivateKeyFromPrivateKeyInfo((this as EdECPrivateKey).encoded)
+            val d = getDerEncodedPrivateKeyFromPrivateKeyInfo(encoded)
             EcPrivateKeyOkp(curve, d, pub.x)
         }
         EcCurve.X25519,
         EcCurve.X448 -> {
             val pub = publicKey.toEcPublicKey(curve) as EcPublicKeyOkp
-            val d = getDerEncodedPrivateKeyFromPrivateKeyInfo((this as XECPrivateKey).encoded)
+            val d = getDerEncodedPrivateKeyFromPrivateKeyInfo(encoded)
             EcPrivateKeyOkp(curve, d, pub.x)
         }
     }
@@ -77,6 +72,6 @@ val EcPrivateKey.javaPrivateKey: PrivateKey
             val spec = PKCS8EncodedKeySpec(generatePrivateKeyInfo(OID.X448.oid, this.d))
             KeyFactory.getInstance("X448").generatePrivate(spec)
         }
+
+
     }
-
-

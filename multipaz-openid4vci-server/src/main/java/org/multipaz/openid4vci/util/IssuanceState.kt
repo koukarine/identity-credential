@@ -7,7 +7,7 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
-import org.multipaz.models.verifier.Openid4VpVerifierModel
+import org.multipaz.verifier.Openid4VpVerifierModel
 import org.multipaz.provisioning.SecretCodeRequest
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.getTable

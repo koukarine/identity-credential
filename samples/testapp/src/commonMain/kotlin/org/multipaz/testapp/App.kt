@@ -40,8 +40,8 @@ import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import coil3.network.ktor2.KtorNetworkFetcherFactory
 import org.multipaz.testapp.ui.AppTheme
-import org.multipaz.models.digitalcredentials.DigitalCredentials
-import org.multipaz.models.presentment.PresentmentModel
+import org.multipaz.digitalcredentials.DigitalCredentials
+import org.multipaz.presentment.model.PresentmentModel
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
 import org.multipaz.crypto.Crypto
@@ -125,9 +125,9 @@ import org.multipaz.documenttype.knowntypes.Loyalty
 import org.multipaz.documenttype.knowntypes.IDPass
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.longfellow.LongfellowZkSystem
-import org.multipaz.models.presentment.PresentmentSource
-import org.multipaz.models.presentment.SimplePresentmentSource
-import org.multipaz.models.provisioning.ProvisioningModel
+import org.multipaz.presentment.model.PresentmentSource
+import org.multipaz.presentment.model.SimplePresentmentSource
+import org.multipaz.provisioning.ProvisioningModel
 import org.multipaz.nfc.NfcTagReader
 import org.multipaz.prompt.PromptModel
 import org.multipaz.provisioning.Display

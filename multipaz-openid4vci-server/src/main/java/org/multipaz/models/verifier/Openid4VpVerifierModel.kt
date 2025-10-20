@@ -1,4 +1,4 @@
-package org.multipaz.models.verifier
+package org.multipaz.verifier
 
 import kotlin.time.Clock
 import kotlinx.datetime.DateTimePeriod

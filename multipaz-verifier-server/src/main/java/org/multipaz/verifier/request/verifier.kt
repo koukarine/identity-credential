@@ -89,7 +89,7 @@ import org.multipaz.mdoc.request.buildDeviceRequestSuspend
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.ZkSystemSpec
 import org.multipaz.mdoc.zkp.longfellow.LongfellowZkSystem
-import org.multipaz.models.openid.OpenID4VP
+import org.multipaz.openid.OpenID4VP
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.rpc.backend.Resources
@@ -104,7 +104,7 @@ import org.multipaz.trustmanagement.TrustManager
 import org.multipaz.trustmanagement.TrustManagerLocal
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.fromHex
-import org.multipaz.models.verification.VerificationUtil
+import org.multipaz.verification.VerificationUtil
 import java.net.URLEncoder
 import kotlin.IllegalArgumentException
 import kotlin.IllegalStateException

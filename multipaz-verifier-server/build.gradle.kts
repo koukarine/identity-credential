@@ -26,7 +26,6 @@ dependencies {
     ksp(project(":multipaz-cbor-rpc"))
     implementation(project(":multipaz"))
     implementation(project(":multipaz-doctypes"))
-    implementation(project(":multipaz-models"))
     implementation(project(":multipaz-longfellow"))
 
     implementation(libs.kotlinx.datetime)
