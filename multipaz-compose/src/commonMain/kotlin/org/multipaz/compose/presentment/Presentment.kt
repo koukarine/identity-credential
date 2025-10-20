@@ -30,10 +30,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
-import org.multipaz.models.presentment.PresentmentCanceled
-import org.multipaz.models.presentment.PresentmentModel
-import org.multipaz.models.presentment.PresentmentSource
-import org.multipaz.models.presentment.PresentmentTimeout
+import org.multipaz.presentment.model.PresentmentCanceled
+import org.multipaz.presentment.model.PresentmentModel
+import org.multipaz.presentment.model.PresentmentSource
+import org.multipaz.presentment.model.PresentmentTimeout
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.prompt.PromptModel
 import org.multipaz.multipaz_compose.generated.resources.Res

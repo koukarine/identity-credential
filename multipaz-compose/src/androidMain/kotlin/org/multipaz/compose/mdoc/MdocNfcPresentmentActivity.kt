@@ -20,7 +20,7 @@ import org.multipaz.compose.presentment.Presentment
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.context.initializeApplication
 import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.models.presentment.PresentmentSource
+import org.multipaz.presentment.model.PresentmentSource
 import org.multipaz.prompt.PromptModel
 
 /**

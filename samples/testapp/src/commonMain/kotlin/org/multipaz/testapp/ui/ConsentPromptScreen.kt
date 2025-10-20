@@ -55,9 +55,9 @@ import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.PhotoID
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.models.openid.dcql.DcqlQuery
-import org.multipaz.models.openid.dcql.DcqlResponse
-import org.multipaz.models.presentment.SimplePresentmentSource
+import org.multipaz.openid.dcql.DcqlQuery
+import org.multipaz.openid.dcql.DcqlResponse
+import org.multipaz.presentment.model.SimplePresentmentSource
 import org.multipaz.request.Requester
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential

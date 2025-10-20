@@ -101,7 +101,6 @@ kotlin {
 
                 implementation(project(":multipaz"))
                 implementation(project(":multipaz-longfellow"))
-                implementation(project(":multipaz-models"))
                 implementation(project(":multipaz-doctypes"))
                 implementation(project(":multipaz-compose"))
                 implementation(libs.kotlinx.datetime)

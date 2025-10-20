@@ -75,7 +75,6 @@ kotlin {
                 api(libs.jetbrains.navigation.runtime)
 
                 implementation(project(":multipaz"))
-                implementation(project(":multipaz-models"))
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.io.core)

@@ -13,7 +13,7 @@ import multipazproject.samples.testapp.generated.resources.app_icon
 import multipazproject.samples.testapp.generated.resources.app_icon_red
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.multipaz.compose.notifications.NotificationManagerAndroid
-import org.multipaz.models.digitalcredentials.getAppOrigin
+import org.multipaz.digitalcredentials.getAppOrigin
 import org.multipaz.nfc.NfcTagReader
 import org.multipaz.prompt.AndroidPromptModel
 import org.multipaz.prompt.PromptModel

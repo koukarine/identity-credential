@@ -29,9 +29,9 @@ import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.mdoc.transport.advertise
 import org.multipaz.mdoc.transport.waitForConnection
-import org.multipaz.models.presentment.MdocPresentmentMechanism
-import org.multipaz.models.presentment.PresentmentModel
-import org.multipaz.models.presentment.PresentmentTimeout
+import org.multipaz.presentment.model.MdocPresentmentMechanism
+import org.multipaz.presentment.model.PresentmentModel
+import org.multipaz.presentment.model.PresentmentTimeout
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.ResponseApdu
 import org.multipaz.prompt.PromptModel

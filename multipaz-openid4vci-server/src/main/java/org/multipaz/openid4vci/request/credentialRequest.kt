@@ -8,7 +8,7 @@ import org.multipaz.rpc.handler.InvalidRequestException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.multipaz.models.verifier.Openid4VpVerifierModel
+import org.multipaz.verifier.Openid4VpVerifierModel
 import org.multipaz.openid4vci.util.AUTHZ_REQ
 import org.multipaz.openid4vci.util.IssuanceState
 import org.multipaz.openid4vci.util.OpaqueIdType

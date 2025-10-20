@@ -19,7 +19,7 @@ Changes since Multipaz 0.93.0 include:
 - High-level composable for simpler QR mdoc presentment.
 - Support for creating AttestKey in Android Keystore Secure Area.
 - Native support for W3 Digital Credentials API on Android.
-- New `org.multipaz.models.verification` package with utility functions to
+- New `org.multipaz.verification` package with utility functions to
   make it easier to create W3C DC requests and validate W3C DC Responses.
 - Support for EU Age Verification ISO mdoc document type (`eu.europa.ec.av.1`)
   with support for this in both the issuer, testapp, and verifier.

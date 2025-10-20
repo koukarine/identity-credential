@@ -26,7 +26,7 @@ import org.multipaz.crypto.SigningKey
 import org.multipaz.document.NameSpacedData
 import org.multipaz.documenttype.knowntypes.EUPersonalID
 import org.multipaz.jwt.buildJwt
-import org.multipaz.models.verifier.Openid4VpVerifierModel
+import org.multipaz.verifier.Openid4VpVerifierModel
 import org.multipaz.openid4vci.credential.CredentialFactory
 import org.multipaz.openid4vci.util.AUTHZ_REQ
 import org.multipaz.openid4vci.util.IssuanceState
