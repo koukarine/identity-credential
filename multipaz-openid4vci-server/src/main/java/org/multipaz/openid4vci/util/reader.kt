@@ -11,9 +11,9 @@ import org.multipaz.crypto.SigningKey
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.mdoc.util.MdocUtil
-import org.multipaz.models.verifier.Openid4VpVerifierModel
-import org.multipaz.models.verifier.fromCbor
-import org.multipaz.models.verifier.toCbor
+import org.multipaz.verifier.Openid4VpVerifierModel
+import org.multipaz.verifier.fromCbor
+import org.multipaz.verifier.toCbor
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.rpc.backend.getTable
 import org.multipaz.rpc.cache

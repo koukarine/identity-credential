@@ -18,9 +18,9 @@ import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.context.initializeApplication
 import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.models.presentment.PresentmentModel
-import org.multipaz.models.presentment.PresentmentSource
-import org.multipaz.models.presentment.UriSchemePresentmentMechanism
+import org.multipaz.presentment.model.PresentmentModel
+import org.multipaz.presentment.model.PresentmentSource
+import org.multipaz.presentment.model.UriSchemePresentmentMechanism
 import org.multipaz.prompt.PromptModel
 import org.multipaz.util.Logger
 import java.net.URL

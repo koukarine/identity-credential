@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.kotlin.dsl.implementation
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.get
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
@@ -102,6 +103,7 @@ kotlin {
                 implementation(libs.bouncy.castle.bcpkix)
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.ktor.client.mock)
                 implementation(project(":multipaz-doctypes"))
             }
         }
@@ -124,6 +126,9 @@ kotlin {
             dependencies {
                 implementation(libs.androidx.biometrics)
                 implementation(libs.androidx.lifecycle.viewmodel)
+                implementation(libs.play.services.identity.credentials)
+                implementation(libs.androidx.credentials)
+                implementation(libs.androidx.credentials.play.services.auth)
             }
         }
 
@@ -151,7 +156,12 @@ kotlin {
         }
 
         val androidInstrumentedTest by getting {
+            dependsOn(commonTest)
             dependencies {
+                implementation(libs.bouncy.castle.bcprov)
+                implementation(libs.bouncy.castle.bcpkix)
+                implementation(project(":multipaz-doctypes"))
+                implementation(project(":multipaz:matcherTest"))
                 implementation(libs.androidx.sqlite)
                 implementation(libs.androidx.sqlite.framework)
                 implementation(libs.androidx.sqlite.bundled)
@@ -161,8 +171,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.coroutines.android)
                 implementation(libs.ktor.client.mock)
-                implementation(libs.bouncy.castle.bcprov)
-                implementation(libs.bouncy.castle.bcpkix)
                 implementation(project(":multipaz-csa"))
             }
         }
@@ -214,8 +222,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    dependencies {
     }
 
     packaging {

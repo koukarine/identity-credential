@@ -20,7 +20,6 @@ kotlin {
         it.binaries.framework {
             export(project(":multipaz"))
             export(project(":multipaz-doctypes"))
-            export(project(":multipaz-models"))
             export(project(":multipaz-longfellow"))
             export(libs.kotlinx.io.bytestring)
             export(libs.kotlinx.io.core)
@@ -48,7 +47,6 @@ kotlin {
             dependencies {
                 api(project(":multipaz"))
                 api(project(":multipaz-doctypes"))
-                api(project(":multipaz-models"))
                 api(project(":multipaz-longfellow"))
                 api(libs.kotlinx.io.bytestring)
                 api(libs.kotlinx.io.core)

@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.multipaz.compose.PassphraseEntryField
-import org.multipaz.models.provisioning.ProvisioningModel
+import org.multipaz.provisioning.ProvisioningModel
 import org.multipaz.multipaz_compose.generated.resources.Res
 import org.multipaz.multipaz_compose.generated.resources.provisioning_authorization_failed
 import org.multipaz.multipaz_compose.generated.resources.provisioning_authorized
