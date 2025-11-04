@@ -124,7 +124,8 @@ suspend fun nfcTagReaderUsbCheck(): NfcTagReaderUsb? {
 
     for ((_, device) in usbManager.deviceList) {
         // vid=0x072f, pid=0x223b: https://www.acs.com.hk/en/products/342/acr1252u-usb-nfc-reader-iii-nfc-forum-certified-reader/
-        if (device.vendorId == 0x072f && device.productId == 0x223b) {
+        // vid=0x072f, pid=0x2401: https://www.acs.com.hk/en/products/641/walletmate-ii-mobile-wallet-nfc-reader-apple-vas-google-smart-tap-certified/
+        if (device.vendorId == 0x072f && (device.productId == 0x223b || device.productId == 0x2401)) {
             if (!usbManager.hasPermission(device)) {
                 var flags = PendingIntent.FLAG_UPDATE_CURRENT
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
