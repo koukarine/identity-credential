@@ -134,7 +134,10 @@ object PhotoID {
             Icon.TODAY,
             SampleData.AGE_IN_YEARS.toDataItem()
         )
-        for (age in IntRange(0, 99)) {
+        // If we provision all 99 age_over_NN claims the MSO will be 3886 bytes which exceeds the Longfellow-ZK
+        // MSO size limit of ~ 2200 bytes. With these 13 claims, the MSO is 764 bytes which is more manageable.
+        val ageThresholdsToProvision = listOf(13, 15, 16, 18, 21, 23, 25, 27, 28, 40, 60, 65, 67)
+        for (age in IntRange(1, 99)) {
             addMdocAttribute(
                 type = DocumentAttributeType.Boolean,
                 identifier = "age_over_${if (age < 10) "0$age" else "$age"}",
@@ -143,7 +146,11 @@ object PhotoID {
                 mandatory = (age == 18),
                 mdocNamespace = ISO_23220_2_NAMESPACE,
                 icon = Icon.TODAY,
-                sampleValue = (SampleData.AGE_IN_YEARS >= age).toDataItem()
+                sampleValue = if (age in ageThresholdsToProvision) {
+                    (SampleData.AGE_IN_YEARS >= age).toDataItem()
+                } else {
+                    null
+                }
             )
         }
         addMdocAttribute(
