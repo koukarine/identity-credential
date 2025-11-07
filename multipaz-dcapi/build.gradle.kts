@@ -46,6 +46,7 @@ kotlin {
         }
     }
 
+    applyDefaultHierarchyTemplate()
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -65,10 +66,6 @@ kotlin {
                 implementation(libs.androidx.credentials)
                 implementation(libs.androidx.credentials.play.services.auth)
             }
-        }
-
-        val iosMain by creating {
-            dependsOn(commonMain)
         }
 
         val commonTest by getting {
