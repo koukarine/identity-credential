@@ -25,6 +25,7 @@ import multipazproject.samples.testapp.generated.resources.document_store_screen
 import multipazproject.samples.testapp.generated.resources.notifications_title
 import multipazproject.samples.testapp.generated.resources.document_viewer_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
+import multipazproject.samples.testapp.generated.resources.pickers_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
 import multipazproject.samples.testapp.generated.resources.settings_screen_title
@@ -235,6 +236,11 @@ data object ScreenLockDestination : Destination {
     override val title = Res.string.screen_lock_title
 }
 
+data object PickersDestination : Destination {
+    override val route = "pickers"
+    override val title = Res.string.pickers_title
+}
+
 val appDestinations = listOf(
     StartDestination,
     SettingsDestination,
@@ -266,4 +272,5 @@ val appDestinations = listOf(
     RichTextDestination,
     NotificationsDestination,
     ScreenLockDestination,
+    PickersDestination,
 )

@@ -29,6 +29,7 @@ import multipazproject.samples.testapp.generated.resources.nfc_screen_title
 import multipazproject.samples.testapp.generated.resources.notifications_title
 import multipazproject.samples.testapp.generated.resources.passphrase_entry_field_screen_title
 import multipazproject.samples.testapp.generated.resources.passphrase_prompt_screen_title
+import multipazproject.samples.testapp.generated.resources.pickers_title
 import multipazproject.samples.testapp.generated.resources.qr_codes_screen_title
 import multipazproject.samples.testapp.generated.resources.rich_text_title
 import multipazproject.samples.testapp.generated.resources.screen_lock_title
@@ -69,6 +70,7 @@ fun StartScreen(
     onClickRichText: () -> Unit = {},
     onClickNotifications: () -> Unit = {},
     onClickScreenLock: () -> Unit = {},
+    onClickPickersScreen: () -> Unit = {},
 ) {
     val blePermissionState = rememberBluetoothPermissionState()
     val coroutineScope = rememberCoroutineScope()
@@ -249,6 +251,12 @@ fun StartScreen(
                 item {
                     TextButton(onClick = onClickScreenLock) {
                         Text(stringResource(Res.string.screen_lock_title))
+                    }
+                }
+
+                item {
+                    TextButton(onClick = onClickPickersScreen) {
+                        Text(stringResource(Res.string.pickers_title))
                     }
                 }
             }

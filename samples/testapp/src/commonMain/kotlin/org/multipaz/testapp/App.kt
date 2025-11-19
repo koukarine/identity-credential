@@ -138,6 +138,7 @@ import org.multipaz.request.Requester
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.testapp.provisioning.ProvisioningSupport
 import org.multipaz.testapp.ui.DcRequestScreen
+import org.multipaz.testapp.ui.PickersScreen
 import org.multipaz.util.Platform
 import org.multipaz.testapp.ui.ShowResponseScreen
 import org.multipaz.testapp.ui.TrustManagerScreen
@@ -860,6 +861,7 @@ class App private constructor (val promptModel: PromptModel) {
                             onClickRichText = { navController.navigate(RichTextDestination.route) },
                             onClickNotifications = { navController.navigate(NotificationsDestination.route) },
                             onClickScreenLock = { navController.navigate(ScreenLockDestination.route) },
+                            onClickPickersScreen = { navController.navigate(PickersDestination.route)}
                         )
                     }
                     composable(route = SettingsDestination.route) {
@@ -1191,6 +1193,9 @@ class App private constructor (val promptModel: PromptModel) {
                         ScreenLockScreen(
                             showToast = { message -> showToast(message) }
                         )
+                    }
+                    composable(route = PickersDestination.route) {
+                        PickersScreen()
                     }
                 }
             }
