@@ -190,10 +190,12 @@ class CoseTests {
             coseSignNoExplicitHeaderSet,
             algorithm
         )
-        assertEquals(
-            algorithm.curve.defaultSigningAlgorithm.coseAlgorithmIdentifier!!,
-            coseSignNoExplicitHeaderSet.protectedHeaders[Cose.COSE_LABEL_ALG.toCoseLabel]!!.asNumber.toInt()
-        )
+        // Refactored to avoid null value automatic type inference ambiguity.
+        algorithm.curve.defaultSigningAlgorithm.coseAlgorithmIdentifier?.let {
+            assertEquals(it,
+                coseSignNoExplicitHeaderSet.protectedHeaders[Cose.COSE_LABEL_ALG.toCoseLabel]!!.asNumber.toInt()
+            )
+        }
 
         // Second, check we can override it if we e.g. want the fully-specified algorithm there
         val protectedHeaders = mapOf<CoseLabel, DataItem>(

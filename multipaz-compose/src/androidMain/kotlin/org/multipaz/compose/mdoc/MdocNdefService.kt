@@ -362,7 +362,7 @@ abstract class MdocNdefService: HostApduService() {
     // Called by OS when an APDU arrives
     override fun processCommandApdu(encodedCommandApdu: ByteArray, extras: Bundle?): ByteArray? {
         // Bounce the APDU to processCommandApdu() above via the coroutine in I/O thread set up in onCreate()
-        commandApduChannel.trySend(CommandApdu.Companion.decode(encodedCommandApdu))
+        val unused = commandApduChannel.trySend(CommandApdu.Companion.decode(encodedCommandApdu))
         return null
     }
 

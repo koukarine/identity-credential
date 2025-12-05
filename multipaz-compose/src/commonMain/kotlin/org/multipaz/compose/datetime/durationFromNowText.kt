@@ -54,7 +54,7 @@ fun durationFromNowText(instant: Instant, now: Instant = Clock.System.now()): St
     val coroutineScope = rememberCoroutineScope()
 
     val tick = remember { mutableIntStateOf(0) }
-    tick.intValue  // reading value ensures update when tick changes
+    val unused = tick.intValue  // reading value ensures update when tick changes
     val (text, updateAt) = durationFromNowTextCore(instant, now)
     val delayDuration = maxOf(updateAt - now, 16.milliseconds)
     SideEffect {
