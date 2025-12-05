@@ -17,7 +17,6 @@ package org.multipaz.document
 
 import org.multipaz.claim.Claim
 import org.multipaz.credential.Credential
-import org.multipaz.credential.CredentialLoader
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.securearea.CreateKeySettings

@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -125,7 +126,7 @@ fun Presentment(
                 onPresentmentComplete()
             } else {
                 // Delay for a short amount of time so the user has a chance to see the success/error indication
-                coroutineScope.launch {
+                LaunchedEffect(Unit) {
                     delay(1.5.seconds)
                     onPresentmentComplete()
                 }

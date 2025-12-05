@@ -103,7 +103,7 @@ fun MdocProximityQrPresentment(
                         )
                         val encodedDeviceEngagement = ByteString(Cbor.encode(
                             buildDeviceEngagement(eDeviceKey = eDeviceKey.publicKey) {
-                                advertisedTransports.map { addConnectionMethod(it.connectionMethod) }
+                                advertisedTransports.forEach { addConnectionMethod(it.connectionMethod) }
                             }.toDataItem()
                         ))
                         qrCodeToShow.value = "mdoc:" + encodedDeviceEngagement.toByteArray().toBase64Url()
