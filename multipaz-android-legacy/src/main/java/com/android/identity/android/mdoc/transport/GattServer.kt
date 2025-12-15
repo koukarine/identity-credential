@@ -438,8 +438,8 @@ internal class GattServer(
                     gattServer!!.cancelConnection(currentConnection)
                 }
                 gattServer!!.close()
-            } catch (e: SecurityException) {
-                Logger.e(TAG, "Caught SecurityException while shutting down", e)
+            } catch (e: Throwable) {
+                Logger.e(TAG, "Caught Exception while shutting down", e)
             }
             gattServer = null
             return
