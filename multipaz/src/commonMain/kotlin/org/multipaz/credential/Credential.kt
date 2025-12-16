@@ -345,7 +345,7 @@ abstract class Credential {
      * Gets the claims in the credential.
      *
      * If a [DocumentTypeRepository] is passed, it will be used to look up the document type
-     * and if a type is found, it'll be used to populate the the [Claim.attribute] field of
+     * and if a type is found, it'll be used to populate the [Claim.attribute] field of
      * the resulting claims.
      *
      * @param documentTypeRepository a [DocumentTypeRepository] or `null`.

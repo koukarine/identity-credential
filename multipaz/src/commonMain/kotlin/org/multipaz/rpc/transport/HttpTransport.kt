@@ -46,7 +46,7 @@ interface HttpTransport {
     }
 
     /**
-     * Should be thrown by [HttpTransport] if the the remote server encountered an error during
+     * Should be thrown by [HttpTransport] if the remote server encountered an error during
      * the processing of the request.
      */
     class RemoteException: HttpClientException {

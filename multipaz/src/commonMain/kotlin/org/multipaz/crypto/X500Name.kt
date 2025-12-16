@@ -69,7 +69,7 @@ class X500Name(val components: Map<String, ASN1String>) {
          * Builds a [X500Name] from the encoded form.
          *
          * For example, if passing the string `CN=David,ST=US-MA,O=Google,OU=Android,C=US` a
-         * [X500Name] instance with the the [X500Name.components] property containing the
+         * [X500Name] instance with the [X500Name.components] property containing the
          * following entries
          *
          * ```

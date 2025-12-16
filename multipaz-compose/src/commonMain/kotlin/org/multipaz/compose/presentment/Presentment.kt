@@ -213,9 +213,9 @@ fun Presentment(
 
         // We show a X in the top-right to resemble a close button, under two circumstances
         //
-        // - when connecting the the remote reader, because the underlying connection via NFC / BLE
+        // - when connecting the remote reader, because the underlying connection via NFC / BLE
         //   could hang and/or take a long time. This gives the user an opportunity to stop the
-        //   transaction. Only applicable for for proximity.
+        //   transaction. Only applicable for proximity.
         //
         // - in the case where the connection is kept alive and we're waiting for a second request from
         //   the reader. This also only applies to proximity and in this case we have a bit of

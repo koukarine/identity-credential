@@ -338,7 +338,7 @@ public class Utility {
      *     }
      * </pre>
      *
-     * <p>Note that the the byte[] arrays returned in the list of map values are
+     * <p>Note that the byte[] arrays returned in the list of map values are
      * the bytes of IssuerSignedItem, not IssuerSignedItemBytes.
      *
      * @param issuerSignedMapping A mapping from namespaces into a list of the bytes of

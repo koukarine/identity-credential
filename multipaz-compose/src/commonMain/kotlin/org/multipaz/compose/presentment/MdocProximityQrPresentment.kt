@@ -39,7 +39,7 @@ private const val TAG = "MdocProximityQrPresentment"
  * - in the [PresentmentModel.State.IDLE] state the composable returned by the [showQrButton] parameter is shown.
  *   Once the user clicks the "show QR code" button (e.g. the `onQrButtonClicked` callback is called) the presentment
  *   process starts and [presentmentModel] transitions to [PresentmentModel.State.CONNECTING].
- * - in the [PresentmentModel.State.CONNECTING] state the the composable [showQrCode] is shown which is
+ * - in the [PresentmentModel.State.CONNECTING] state the composable [showQrCode] is shown which is
  *   renders the QR code. When a reader scans the QR code and connects the presentment process moves on to the
  *   next step and [presentmentModel] transitions to [PresentmentModel.State.WAITING_FOR_SOURCE] and eventually
  *   other states.
