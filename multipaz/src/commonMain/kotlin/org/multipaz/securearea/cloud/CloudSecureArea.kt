@@ -314,7 +314,7 @@ open class CloudSecureArea protected constructor(
     /**
      * The [PassphraseConstraints] configured at registration time.
      *
-     * @return the [PassphraseConstraints] passed to to the [register] method.
+     * @return the [PassphraseConstraints] passed to the [register] method.
      * @throws IllegalStateException if not registered with a Cloud Secure Area instance.
      */
     suspend fun getPassphraseConstraints(): PassphraseConstraints {

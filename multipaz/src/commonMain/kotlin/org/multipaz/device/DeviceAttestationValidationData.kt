@@ -23,7 +23,7 @@ data class DeviceAttestationValidationData(
      * iOS app identifier that consists of a team id followed by a dot and app bundle name. If
      * empty, any app identifier is accepted.
      *
-     * On iOS this is the primary method of ensuring the the app that generated a given
+     * On iOS this is the primary method of ensuring the app that generated a given
      * [DeviceAttestation] is legitimate, as team id is tied to your team.
      *
      * It must not be empty if [iosReleaseBuild] is `true`

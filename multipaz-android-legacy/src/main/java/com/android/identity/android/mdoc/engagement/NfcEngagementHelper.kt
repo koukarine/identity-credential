@@ -753,7 +753,7 @@ class NfcEngagementHelper private constructor(
          *
          *
          * This is a good point for an app to notify the user that an mdoc transaction
-         * is about to to take place and they can start removing the device from the field.
+         * is about to take place and they can start removing the device from the field.
          */
         fun onHandoverSelectMessageSent()
 

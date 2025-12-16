@@ -24,7 +24,7 @@ import kotlin.enums.enumEntries
  *   [Fully-Specified Algorithms for JOSE and COSE draft](https://datatracker.ietf.org/doc/draft-ietf-jose-fully-specified-algorithms/)
  *   for more information on what constitutes a fully specified algorithm.
  * @param curve the [EcCurve] used in the algorithm or `null` if not applicable or not a fully specified algorithm.
- * @param hashAlgorithm the hash algorithm in the the algorithm or `null` if not applicable or not a fully specified algorithm.
+ * @param hashAlgorithm the hash algorithm in the algorithm or `null` if not applicable or not a fully specified algorithm.
  * @param isSigning `true` if the algorithm is for signing, `false` if not applicable or not a fully specified algorithm.
  * @param isKeyAgreement `true` if the algorithm is for key agreement, `false` if not applicable or not a fully specified algorithm.
  * @param description A human readable description of the algorithm.

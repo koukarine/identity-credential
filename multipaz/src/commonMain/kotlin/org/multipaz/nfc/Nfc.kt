@@ -57,7 +57,7 @@ object Nfc {
     const val RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND = 0x6a82
 
     /**
-     * The [ResponseApdu.status] for indicating that bytes are are still available.
+     * The [ResponseApdu.status] for indicating that bytes are still available.
      *
      * Reference: ISO/IEC 7816-4 clause 5.3.4
      */

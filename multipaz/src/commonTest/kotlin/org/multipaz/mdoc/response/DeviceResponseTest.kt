@@ -449,7 +449,7 @@ class DeviceResponseTest {
     ) {
         val dr = encodedDeviceResponse.copyOf()
         // By inspection we know the docType in DeviceResponse is at offset 42. Poison it and
-        // check that we catch it it doesn't match with the one in the MSO.
+        // check that we catch if it doesn't match with the one in the MSO.
         assertEquals('o'.code.toByte(), dr[42])
         dr[42] = 'O'.code.toByte()
         val drParsed = DeviceResponse.fromDataItem(Cbor.decode(dr))
