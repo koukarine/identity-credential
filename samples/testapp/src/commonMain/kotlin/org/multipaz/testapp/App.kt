@@ -895,6 +895,14 @@ class App private constructor (val promptModel: PromptModel) {
                                         credentialId = credentialId
                                     )
                                 )
+                            },
+                            onProvisionMore = { document, authorizationData ->
+                                provisioningModel.launchOpenID4VCIRefreshCredentials(
+                                    document,
+                                    authorizationData,
+                                    provisioningSupport.getOpenID4VCIClientPreferences(),
+                                    provisioningSupport.getOpenID4VCIBackend()
+                                )
                             }
                         )
                     }

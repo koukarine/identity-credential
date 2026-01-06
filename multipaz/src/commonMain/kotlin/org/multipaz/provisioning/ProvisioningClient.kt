@@ -1,5 +1,6 @@
 package org.multipaz.provisioning
 
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.securearea.SecureArea
 
 /**
@@ -43,6 +44,17 @@ interface ProvisioningClient {
     suspend fun authorize(response: AuthorizationResponse)
 
     /**
+     * Saves authorization data for future use.
+     *
+     * Once the client is authorized (i.e. [getAuthorizationChallenges] returns an empty list)
+     * the "authorization" can sometimes be saved for use at some future time.
+     *
+     * @return provisioning-protocol-specific serialized data, if saving it is supported, `null`
+     *  otherwise.
+     */
+    suspend fun getAuthorizationData(): ByteString?
+
+    /**
      * Returns a challenge for the key(s) to which the credential(s) will be bound.
      *
      * For the key-bound credentials, the issuing server typically requires freshly-minted
@@ -57,8 +69,8 @@ interface ProvisioningClient {
     /**
      * Obtains credentials using key binding information.
      *
-     * [keyInfo] key binding information, required type is determined by
-     * [CredentialMetadata.keyBindingType].
+     * @param keyInfo key binding information, required type is determined by
+     *  [CredentialMetadata.keyBindingType].
      */
     suspend fun obtainCredentials(keyInfo: KeyBindingInfo): Credentials
 }

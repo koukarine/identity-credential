@@ -1,7 +1,5 @@
 package org.multipaz.provisioning.openid4vci
 
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -10,42 +8,17 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.webtoken.buildJwt
 import org.multipaz.rpc.backend.BackendEnvironment
-import org.multipaz.securearea.CreateKeySettings
-import org.multipaz.securearea.SecureArea
-import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.util.toBase64Url
 import kotlin.random.Random
 
 internal object OpenID4VCIUtil {
-    private const val TAG = "OpenidUtil"
-
-    private val keyCreationMutex = Mutex()
-
-    private suspend fun ensureKey(secureArea: SecureArea, alias: String) {
-        val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
-        try {
-            secureArea.getKeyInfo(alias)
-        } catch (_: Exception) {
-            keyCreationMutex.withLock {
-                try {
-                    secureArea.getKeyInfo(alias)
-                } catch (_: Exception) {
-                    secureArea.createKey(alias, CreateKeySettings())
-                }
-            }
-        }
-    }
-
     suspend fun generateDPoP(
+        dpopKey: AsymmetricKey,
         clientId: String,
         requestUrl: String,
         dpopNonce: String?,
         accessToken: String? = null
     ): String {
-        val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
-        val dpopAlias = "dpop:$clientId"
-        ensureKey(secureArea, dpopAlias)
-        val dpopKey = AsymmetricKey.anonymous(secureArea, dpopAlias)
         return buildJwt(
             type = "dpop+jwt",
             key = dpopKey,

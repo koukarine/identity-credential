@@ -18,6 +18,7 @@ import org.multipaz.cbor.Bstr
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Tagged
+import org.multipaz.cbor.buildCborMap
 import org.multipaz.cbor.toDataItem
 import org.multipaz.cose.Cose
 import org.multipaz.cose.CoseLabel
@@ -133,6 +134,8 @@ class ProvisioningModelTest {
         }.await()
         val docMetadata = doc.metadata as DocumentMetadata
         assertTrue(docMetadata.provisioned)
+        assertEquals("foobar_auth",
+            docMetadata.authorizationData!!.toByteArray().decodeToString())
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -216,6 +219,9 @@ class ProvisioningModelTest {
             }
             authorizationResponse = response
         }
+
+        override suspend fun getAuthorizationData(): ByteString =
+            ByteString("foobar_auth".encodeToByteArray())
 
         override suspend fun getKeyBindingChallenge(): String = "test_challenge"
 

@@ -1,6 +1,9 @@
 package org.multipaz.document
 
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.storage.Storage
 
 /**
  * Interface that all objects returned in [Document.metadata] must implement.
@@ -33,6 +36,12 @@ interface AbstractDocumentMetadata {
     val issuerLogo: ByteString?
 
     /**
+     * Saved authorization data to refresh credentials, possibly without requiring
+     * user to re-authorize.
+     */
+    val authorizationData: ByteString?
+
+    /**
      * Additional data the application wishes to store.
      */
     val other: ByteString?
@@ -61,6 +70,20 @@ interface AbstractDocumentMetadata {
         typeDisplayName: String?,
         cardArt: ByteString?,
         issuerLogo: ByteString?,
+        authorizationData: ByteString?,
         other: ByteString?
+    )
+
+    /**
+     * Delete this metadata, called when the document to which it belongs is going away.
+     *
+     * In particular, data that resides in the storage and the secure area should be deleted.
+     *
+     * @param secureAreaRepository secure area repository to look up an appropriate [SecureArea]
+     * @param storage interface to the storage
+     */
+    suspend fun cleanup(
+        secureAreaRepository: SecureAreaRepository,
+        storage: Storage
     )
 }

@@ -16,6 +16,7 @@ import io.ktor.http.takeFrom
 import io.ktor.server.testing.testApplication
 import io.ktor.util.encodeBase64
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -30,6 +31,7 @@ import kotlinx.serialization.json.put
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.junit.jupiter.api.assertThrows
 import org.multipaz.asn1.OID
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.AsymmetricKey
@@ -39,6 +41,7 @@ import org.multipaz.crypto.X509Cert
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
 import org.multipaz.provisioning.KeyBindingInfo
+import org.multipaz.provisioning.Provisioning
 import org.multipaz.provisioning.openid4vci.KeyIdAndAttestation
 import org.multipaz.provisioning.openid4vci.OpenID4VCI
 import org.multipaz.provisioning.openid4vci.OpenID4VCIBackend
@@ -49,15 +52,18 @@ import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.KeyAttestation
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
+import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.server.common.ServerConfiguration
 import org.multipaz.server.common.ServerEnvironment
 import org.multipaz.server.common.installServerEnvironment
+import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.util.toBase64Url
 import kotlin.IllegalStateException
 import kotlin.reflect.KClass
 import kotlin.reflect.cast
+import kotlin.test.assertIs
 import kotlin.text.decodeToString
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -67,13 +73,17 @@ import kotlin.time.Duration.Companion.seconds
  * Openid4Vci client-server integration test.
  */
 class ProvisioningClientTest {
+    lateinit var storage: Storage
     lateinit var secureAreaProvider:SecureAreaProvider<SecureArea>
+    lateinit var secureAreaRepository: SecureAreaRepository
 
     @Before
-    fun setup() {
-        val storage = EphemeralStorage()
+    fun setup() = runTest {
+        storage = EphemeralStorage()
+        val secureArea = SoftwareSecureArea.create(storage)
+        secureAreaRepository = SecureAreaRepository.Builder().add(secureArea).build()
         secureAreaProvider = SecureAreaProvider<SecureArea>(Dispatchers.Default) {
-            SoftwareSecureArea.create(storage)
+            secureArea
         }
     }
 
@@ -210,7 +220,7 @@ class ProvisioningClientTest {
     }
 
     @Test
-    fun runWithPreauthorizedCode() = testApplication {
+    fun runWithPreauthorizedCodeAndRefresh() = testApplication {
         val serverArgs = arrayOf(
             "-param", "base_url=http://localhost",
             "-param", "database_engine=ephemeral",
@@ -277,6 +287,34 @@ class ProvisioningClientTest {
                     listOf(KeyIdAndAttestation("bar", keyInfo.attestation))))
 
             Assert.assertEquals(1, credentials.serializedCredentials.size)
+
+            val authorizationData = provisioningClient.getAuthorizationData()!!
+
+            // Test refresh workflow
+            val refreshClient = Provisioning.createClientFromAuthorizationData(authorizationData)
+            refreshClient.getKeyBindingChallenge()
+            val refreshKeyInfo = secureArea.createKey(null, CreateKeySettings())
+            val refreshed = refreshClient.obtainCredentials(KeyBindingInfo.Attestation(
+                listOf(KeyIdAndAttestation("refresh", refreshKeyInfo.attestation))))
+            Assert.assertEquals(1, refreshed.serializedCredentials.size)
+
+            // Clean up authorization data
+            Provisioning.cleanupAuthorizationData(
+                authorizationData, secureAreaRepository, storage)
+
+            // Now refreshing will fail
+            val failingClient = Provisioning.createClientFromAuthorizationData(authorizationData)
+            failingClient.getKeyBindingChallenge()  // nonce does not require authorization
+            val failingKeyInfo = secureArea.createKey(null, CreateKeySettings())
+            val exception = assertThrows<Exception>("Should not succeed, keys were deleted") {
+                refreshClient.obtainCredentials(
+                    KeyBindingInfo.Attestation(
+                        listOf(KeyIdAndAttestation("fail", failingKeyInfo.attestation))
+                    )
+                )
+            }
+            // Exception is thrown because key could not be found
+            assertIs<IllegalArgumentException>(exception)
         }
     }
 
@@ -445,6 +483,7 @@ class ProvisioningClientTest {
             return clazz.cast(when (clazz) {
                 HttpClient::class -> httpClient
                 OpenID4VCIBackend::class -> TestBackend
+                OpenID4VCIClientPreferences::class -> testClientPreferences
                 SecureAreaProvider::class -> secureAreaProvider
                 else -> throw IllegalArgumentException("no such class available: ${clazz.simpleName}")
             })

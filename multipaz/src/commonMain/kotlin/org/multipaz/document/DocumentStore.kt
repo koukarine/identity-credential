@@ -103,12 +103,14 @@ class DocumentStore private constructor(
         typeDisplayName: String? = null,
         cardArt: ByteString? = null,
         issuerLogo: ByteString? = null,
+        authorizationData: ByteString? = null,
         other: ByteString? = null
     ): Document {
         return createDocument(
             metadataInitializer = {
                 val metadata = it as DocumentMetadata
-                metadata.setMetadata(displayName, typeDisplayName, cardArt, issuerLogo, other)
+                metadata.setMetadata(
+                    displayName, typeDisplayName, cardArt, issuerLogo, authorizationData, other)
             }
         )
     }
@@ -178,10 +180,13 @@ class DocumentStore private constructor(
      */
     suspend fun deleteDocument(identifier: String) {
         lookupDocument(identifier)?.let { document ->
-            lock.withLock {
+            val metadata = lock.withLock {
+                val metadata = document.metadata
                 document.deleteDocument()
                 documentCache.remove(identifier)
+                metadata
             }
+            metadata.cleanup(secureAreaRepository, storage)
         }
     }
 

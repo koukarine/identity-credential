@@ -5,6 +5,8 @@ import org.multipaz.document.NameSpacedData
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.isEmpty
 import org.multipaz.document.AbstractDocumentMetadata
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.storage.Storage
 import kotlin.concurrent.Volatile
 
 class TestDocumentMetadata private constructor(
@@ -20,6 +22,8 @@ class TestDocumentMetadata private constructor(
     override val cardArt: ByteString?
         get() = null
     override val issuerLogo: ByteString?
+        get() = null
+    override val authorizationData: ByteString?
         get() = null
     override val other: ByteString?
         get() = null
@@ -44,7 +48,14 @@ class TestDocumentMetadata private constructor(
         typeDisplayName: String?,
         cardArt: ByteString?,
         issuerLogo: ByteString?,
+        authorizationData: ByteString?,
         other: ByteString?
+    ) {
+    }
+
+    override suspend fun cleanup(
+        secureAreaRepository: SecureAreaRepository,
+        storage: Storage
     ) {
     }
 

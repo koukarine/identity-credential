@@ -3,6 +3,9 @@ package org.multipaz.document
 import org.multipaz.cbor.annotation.CborSerializable
 import kotlinx.io.bytestring.ByteString
 import kotlinx.io.bytestring.isEmpty
+import org.multipaz.provisioning.Provisioning
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.storage.Storage
 import kotlin.concurrent.Volatile
 
 /**
@@ -24,6 +27,7 @@ class DocumentMetadata private constructor(
     override val typeDisplayName get() = data.typeDisplayName
     override val cardArt get() = data.cardArt
     override val issuerLogo get() = data.issuerLogo
+    override val authorizationData get() = data.authorizationData
     override val other get() = data.other
 
     override suspend fun markAsProvisioned() {
@@ -34,6 +38,7 @@ class DocumentMetadata private constructor(
             typeDisplayName = lastData.typeDisplayName,
             cardArt = lastData.cardArt,
             issuerLogo = lastData.issuerLogo,
+            authorizationData = lastData.authorizationData,
             other = lastData.other
         )
         data = newData
@@ -45,6 +50,7 @@ class DocumentMetadata private constructor(
         typeDisplayName: String?,
         cardArt: ByteString?,
         issuerLogo: ByteString?,
+        authorizationData: ByteString?,
         other: ByteString?
     ) {
         val lastData = data
@@ -54,9 +60,19 @@ class DocumentMetadata private constructor(
             typeDisplayName = typeDisplayName,
             cardArt = cardArt,
             issuerLogo = issuerLogo,
+            authorizationData = authorizationData,
             other = other
         )
         saveFn(ByteString(data.toCbor()))
+    }
+
+    override suspend fun cleanup(
+        secureAreaRepository: SecureAreaRepository,
+        storage: Storage
+    ) {
+        authorizationData?.let {
+            Provisioning.cleanupAuthorizationData(it, secureAreaRepository, storage)
+        }
     }
 
     @CborSerializable
@@ -66,6 +82,7 @@ class DocumentMetadata private constructor(
         val typeDisplayName: String? = null,
         val cardArt: ByteString? = null,
         val issuerLogo: ByteString? = null,
+        val authorizationData: ByteString? = null,
         val other: ByteString? = null
     ) {
         companion object

@@ -79,6 +79,8 @@ class ProvisioningModel(
 
     val isActive: Boolean get() = job?.isActive ?: false
 
+    private var targetDocument: Document? = null
+
     /**
      * Launch provisioning session to provision credentials to a new [Document] using
      * OpenID4VCI protocol.
@@ -93,8 +95,31 @@ class ProvisioningModel(
         clientPreferences: OpenID4VCIClientPreferences,
         backend: OpenID4VCIBackend,
     ): Deferred<Document> =
-        launch(Dispatchers.Default + promptModel + RpcAuthClientSession() + ProvisioningEnvironment(backend)) {
+        launch(createCoroutineContext(clientPreferences, backend)) {
+            targetDocument = null
             OpenID4VCI.createClientFromOffer(offerUri, clientPreferences)
+        }
+
+    /**
+     * Launch provisioning session to provision additional credentials to an existing [Document].
+     *
+     * @param document [Document] where credentials should be provisioned
+     * @param authorizationData authorization data from a previous provisioning session (see
+     *  [DocumentMetadataHandler.updateDocumentMetadata] `authorizationData` parameter)
+     * @param clientPreferences configuration parameters for OpenID4VCI client
+     * @param backend interface to the wallet back-end service
+     * @return deferred [Document] value, resolved when credentials are provisioned
+     */
+    fun launchOpenID4VCIRefreshCredentials(
+        document: Document,
+        authorizationData: ByteString,
+        clientPreferences: OpenID4VCIClientPreferences,
+        backend: OpenID4VCIBackend,
+    ): Deferred<Document> =
+        launch(createCoroutineContext(clientPreferences, backend)) {
+            check(document.store === documentStore)
+            targetDocument = document
+            Provisioning.createClientFromAuthorizationData(authorizationData)
         }
 
     /**
@@ -158,6 +183,12 @@ class ProvisioningModel(
         authorizationResponseChannel.send(response)
     }
 
+    private fun createCoroutineContext(
+        clientPreferences: OpenID4VCIClientPreferences,
+        backend: OpenID4VCIBackend
+    ) = Dispatchers.Default + promptModel + RpcAuthClientSession() +
+            ProvisioningEnvironment(clientPreferences, backend)
+
     private suspend fun runProvisioning(provisioningClient: ProvisioningClient): Document {
         mutableState.emit(Connected)
         val issuerMetadata = provisioningClient.getMetadata()
@@ -176,12 +207,15 @@ class ProvisioningModel(
         mutableState.emit(Authorized)
 
         val format = credentialMetadata.format
-        val document = documentStore.createDocument { metadata ->
-            metadataHandler.initializeDocumentMetadata(
-                metadata,
-                credentialMetadata.display,
-                issuerMetadata.display
-            )
+        val document = targetDocument ?: run {
+            documentStore.createDocument { metadata ->
+                metadataHandler.initializeDocumentMetadata(
+                    metadata,
+                    credentialMetadata.display,
+                    issuerMetadata.display,
+                    authorizationData = provisioningClient.getAuthorizationData()
+                )
+            }
         }
         try {
             val credentialCount = min(credentialMetadata.maxBatchSize, 3)
@@ -283,7 +317,11 @@ class ProvisioningModel(
                 )
             }
             if (credentials.display != null) {
-                metadataHandler.updateDocumentMetadata(document, credentials.display)
+                metadataHandler.updateDocumentMetadata(
+                    document = document,
+                    credentialDisplay = credentials.display,
+                    authorizationData = provisioningClient.getAuthorizationData()
+                )
             }
         } catch (err: Throwable) {
             documentStore.deleteDocument(document.identifier)
@@ -338,6 +376,7 @@ class ProvisioningModel(
     ): State()
 
     internal inner class ProvisioningEnvironment(
+        val openID4VCIClientPreferences: OpenID4VCIClientPreferences,
         val openid4VciBackend: OpenID4VCIBackend
     ): BackendEnvironment {
         val secureAreaProvider = SecureAreaProvider { secureArea }
@@ -345,6 +384,7 @@ class ProvisioningModel(
             when (clazz) {
                 HttpClient::class -> httpClient
                 SecureAreaProvider::class -> secureAreaProvider
+                OpenID4VCIClientPreferences::class -> openID4VCIClientPreferences
                 OpenID4VCIBackend::class -> openid4VciBackend
                 else -> null
             }
@@ -369,7 +409,8 @@ class ProvisioningModel(
         suspend fun initializeDocumentMetadata(
             metadata: AbstractDocumentMetadata,
             credentialDisplay: Display,
-            issuerDisplay: Display
+            issuerDisplay: Display,
+            authorizationData: ByteString?
         )
 
         /**
@@ -380,7 +421,8 @@ class ProvisioningModel(
          */
         suspend fun updateDocumentMetadata(
             document: Document,
-            credentialDisplay: Display
+            credentialDisplay: Display,
+            authorizationData: ByteString?
         )
     }
 
@@ -397,20 +439,23 @@ class ProvisioningModel(
         override suspend fun initializeDocumentMetadata(
             metadata: AbstractDocumentMetadata,
             credentialDisplay: Display,
-            issuerDisplay: Display
+            issuerDisplay: Display,
+            authorizationData: ByteString?
         ) {
             (metadata as DocumentMetadata).setMetadata(
                 displayName = credentialDisplay.text,
                 typeDisplayName = credentialDisplay.text,
                 cardArt = credentialDisplay.logo ?: defaultCardArtLoader.invoke(),
                 issuerLogo = issuerDisplay.logo,
+                authorizationData = authorizationData,
                 other = null
             )
         }
 
         override suspend fun updateDocumentMetadata(
             document: Document,
-            credentialDisplay: Display
+            credentialDisplay: Display,
+            authorizationData: ByteString?
         ) {
             val metadata = document.metadata as DocumentMetadata
             metadata.setMetadata(
@@ -418,6 +463,7 @@ class ProvisioningModel(
                 typeDisplayName = metadata.typeDisplayName,
                 cardArt = credentialDisplay.logo ?: metadata.cardArt,
                 issuerLogo = metadata.issuerLogo,
+                authorizationData = authorizationData ?: metadata.authorizationData,
                 other = metadata.other
             )
         }

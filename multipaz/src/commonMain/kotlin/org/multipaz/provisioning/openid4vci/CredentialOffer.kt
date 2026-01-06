@@ -29,9 +29,8 @@ internal sealed class CredentialOffer {
     data class Grantless(
         override val issuerUri: String,
         override val configurationId: String,
-    ): CredentialOffer() {
-        override val authorizationServer: String? get() = null
-    }
+        override val authorizationServer: String? = null
+    ): CredentialOffer()
 
     /**
      * Credential offer with Grant Type `urn:ietf:params:oauth:grant-type:pre-authorized_code`.

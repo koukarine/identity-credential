@@ -29,6 +29,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import org.multipaz.cbor.DataItem
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.AsymmetricKey
@@ -43,7 +44,10 @@ import org.multipaz.provisioning.ProvisioningClient
 import org.multipaz.provisioning.ProvisioningMetadata
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.securearea.CreateKeySettings
+import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaProvider
+import org.multipaz.securearea.SecureAreaRepository
+import org.multipaz.storage.Storage
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
@@ -56,22 +60,19 @@ internal class OpenID4VCIProvisioningClient(
     val clientPreferences: OpenID4VCIClientPreferences,
     val credentialOffer: CredentialOffer,
     val issuerConfiguration: IssuerConfiguration,
-    val authorizationConfiguration: AuthorizationConfiguration
+    val authorizationConfiguration: AuthorizationConfiguration,
+    val secureArea: SecureArea,
+    val authorizationData: OpenID4VCIAuthorizationData
 ): ProvisioningClient {
     var pkceCodeVerifier: String? = null
     var token: String? = null
     var tokenExpiration: Instant? = null
-    var refreshToken: String? = null
     var authorizationDPoPNonce: String? = null
     var issuerDPoPNonce: String? = null
     var clientAttestationChallenge: String? = null
     var keyChallenge: String? = null
     var redirectState: String? = null
     var txRetry = false
-
-    var walletAttestation: String? = null
-
-    var walletAttestationKeyAlias: String? = null
 
     override suspend fun getMetadata(): ProvisioningMetadata {
         val fullMetadata = issuerConfiguration.provisioningMetadata
@@ -83,7 +84,7 @@ internal class OpenID4VCIProvisioningClient(
     }
 
     override suspend fun getAuthorizationChallenges(): List<AuthorizationChallenge> {
-        if (token != null) {
+        if (token != null || authorizationData.refreshToken != null) {
             return listOf()
         }
         if (credentialOffer is CredentialOffer.PreauthorizedCode) {
@@ -118,6 +119,13 @@ internal class OpenID4VCIProvisioningClient(
         }
     }
 
+    override suspend fun getAuthorizationData(): ByteString? =
+        if (authorizationData.refreshToken == null) {
+            null
+        } else {
+            ByteString(authorizationData.toCbor())
+        }
+
     override suspend fun getKeyBindingChallenge(): String {
         val credentialConfiguration =
             issuerConfiguration.provisioningMetadata.credentials[credentialOffer.configurationId]!!
@@ -149,8 +157,10 @@ internal class OpenID4VCIProvisioningClient(
         val credentialMetadata =
             issuerConfiguration.provisioningMetadata.credentials[credentialOffer.configurationId]!!
         val keyProofs = buildKeyProofs(keyInfo)
+        val dpopKey = getDPopKey()
         while (true) {
             val dpop = OpenID4VCIUtil.generateDPoP(
+                dpopKey = dpopKey,
                 clientId = clientPreferences.clientId,
                 requestUrl = issuerConfiguration.credentialEndpoint,
                 dpopNonce = issuerDPoPNonce,
@@ -270,10 +280,12 @@ internal class OpenID4VCIProvisioningClient(
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
         var response: HttpResponse
         var retryCount = 0
+        val dpopKey = getDPopKey()
 
         while (true) {
             // retry loop for DPoP nonce
             val dpop = OpenID4VCIUtil.generateDPoP(
+                dpopKey = dpopKey,
                 clientId = clientPreferences.clientId,
                 requestUrl = authorizationConfiguration.pushedAuthorizationRequestEndpoint,
                 dpopNonce = authorizationDPoPNonce,
@@ -334,8 +346,8 @@ internal class OpenID4VCIProvisioningClient(
             ) {
                 headers {
                     append("DPoP", dpop)
-                    if (walletAttestation != null) {
-                        append("OAuth-Client-Attestation", walletAttestation!!)
+                    if (authorizationData.walletAttestation != null) {
+                        append("OAuth-Client-Attestation", authorizationData.walletAttestation!!)
                         append("OAuth-Client-Attestation-PoP", walletAttestationPoP!!)
                     }
                 }
@@ -375,9 +387,10 @@ internal class OpenID4VCIProvisioningClient(
                 nonce = endpoint.authority.encodeToByteString()
             )
         )
-        walletAttestationKeyAlias = keyInfo.alias
+        authorizationData.walletAttestationKeyAlias = keyInfo.alias
         val backend = BackendEnvironment.getInterface(OpenID4VCIBackend::class)!!
-        walletAttestation = backend.createJwtWalletAttestation(keyInfo.attestation)
+        authorizationData.walletAttestation =
+            backend.createJwtWalletAttestation(keyInfo.attestation)
         return AsymmetricKey.anonymous(secureArea, keyInfo.alias)
     }
 
@@ -419,23 +432,26 @@ internal class OpenID4VCIProvisioningClient(
         }
         val httpClient = BackendEnvironment.getInterface(HttpClient::class)!!
         var retried = false
+        val dpopKey = getDPopKey()
+
         // When dpop nonce is null, this loop will run twice, first request will return with error,
         // but will provide fresh, dpop nonce and the second request will get fresh access data.
         while (true) {
             val dpop = OpenID4VCIUtil.generateDPoP(
+                dpopKey = dpopKey,
                 clientId = clientPreferences.clientId,
                 requestUrl = authorizationConfiguration.tokenEndpoint,
                 dpopNonce = authorizationDPoPNonce,
                 accessToken = null
             )
             val walletAttestationPoP = if (authorizationConfiguration.clientAuthentication == ClientAuthenticationType.CLIENT_ATTESTATION) {
-                val key = if (walletAttestation == null) {
+                val key = if (authorizationData.walletAttestation == null) {
                     // For pre-authorized code case, this is where the session is initialized.
                     obtainWalletAttestation()
                 } else {
                     AsymmetricKey.anonymous(
                         secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get(),
-                        alias = walletAttestationKeyAlias!!
+                        alias = authorizationData.walletAttestationKeyAlias!!
                     )
                 }
                 OpenID4VCIUtil.createWalletAttestationPoP(
@@ -492,8 +508,8 @@ internal class OpenID4VCIProvisioningClient(
                 headers {
                     append("DPoP", dpop)
                     append("Content-Type", "application/x-www-form-urlencoded")
-                    if (walletAttestation != null) {
-                        append("OAuth-Client-Attestation", walletAttestation!!)
+                    if (authorizationData.walletAttestation != null) {
+                        append("OAuth-Client-Attestation", authorizationData.walletAttestation!!)
                         append("OAuth-Client-Attestation-PoP", walletAttestationPoP!!)
                     }
                 }
@@ -535,7 +551,7 @@ internal class OpenID4VCIProvisioningClient(
             tokenExpiration = Clock.System.now() + duration.seconds
             val refreshToken = tokenResponse.stringOrNull("refresh_token")
             if (refreshToken != null) {
-                this.refreshToken = refreshToken
+                authorizationData.refreshToken = refreshToken
             }
             return
         }
@@ -561,7 +577,7 @@ internal class OpenID4VCIProvisioningClient(
     }
 
     private suspend fun refreshAccessIfNeeded() {
-        if (token == null && refreshToken == null) {
+        if (token == null && authorizationData.refreshToken == null) {
             throw IllegalStateException("Not authorized")
         }
         val expiration = tokenExpiration
@@ -570,10 +586,28 @@ internal class OpenID4VCIProvisioningClient(
             return
         }
         obtainToken(
-            refreshToken = refreshToken
+            refreshToken = authorizationData.refreshToken
                 ?: throw IllegalStateException("refresh token was not issued")
         )
         Logger.i(TAG, "Refreshed access tokens")
+    }
+
+    private suspend fun getDPopKey(): AsymmetricKey {
+        val alias = authorizationData.dpopKeyAlias
+        return if (alias != null) {
+            AsymmetricKey.anonymous(secureArea, alias)
+        } else {
+            val keyInfo = secureArea.createKey(
+                alias = null,
+                createKeySettings = CreateKeySettings()
+            )
+            authorizationData.dpopKeyAlias = keyInfo.alias
+            AsymmetricKey.AnonymousSecureAreaBased(
+                alias = keyInfo.alias,
+                secureArea = secureArea,
+                keyInfo = keyInfo
+            )
+        }
     }
 
     companion object Companion : JsonParsing("Openid4Vci") {
@@ -604,6 +638,69 @@ internal class OpenID4VCIProvisioningClient(
             clientPreferences: OpenID4VCIClientPreferences,
         ): OpenID4VCIProvisioningClient {
             val credentialOffer = CredentialOffer.parseCredentialOffer(offerUri)
+            val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
+            return create(
+                secureArea = secureArea,
+                credentialOffer = credentialOffer,
+                clientPreferences = clientPreferences,
+                authorizationData = OpenID4VCIAuthorizationData(
+                    issuerUri = credentialOffer.issuerUri,
+                    configurationId = credentialOffer.configurationId,
+                    authorizationServer = credentialOffer.authorizationServer,
+                    secureAreaId = secureArea.identifier
+                )
+            )
+        }
+
+        suspend fun createFromAuthorizationData(
+            authorizationData: DataItem,
+            clientPreferences: OpenID4VCIClientPreferences,
+        ): OpenID4VCIProvisioningClient {
+            val data = OpenID4VCIAuthorizationData.fromDataItem(authorizationData)
+            check(data.type == "openid4vci")
+            val secureArea = BackendEnvironment.getInterface(SecureAreaProvider::class)!!.get()
+            return create(
+                secureArea = secureArea,
+                credentialOffer = CredentialOffer.Grantless(
+                    issuerUri = data.issuerUri,
+                    configurationId = data.configurationId,
+                    authorizationServer = data.authorizationServer
+                ),
+                clientPreferences = clientPreferences,
+                authorizationData = data
+            )
+        }
+
+        suspend fun cleanupAuthorizationData(
+            authorizationData: DataItem,
+            secureAreaRepository: SecureAreaRepository,
+            storage: Storage
+        ) {
+            try {
+                val data = OpenID4VCIAuthorizationData.fromDataItem(authorizationData)
+                check(data.type == "openid4vci")
+                val keys = buildSet {
+                    // These may refer to the same key, don't delete it twice. (The second delete may
+                    // appear to be a noop, but it is actually racy).
+                    data.dpopKeyAlias?.let { add(it) }
+                    data.walletAttestationKeyAlias?.let { add(it) }
+                }
+                if (keys.isNotEmpty()) {
+                    val secureArea = secureAreaRepository.getImplementation(data.secureAreaId)!!
+                    keys.forEach { secureArea.deleteKey(it) }
+                }
+            } catch (err: Exception) {
+                Logger.e(TAG, "Failed to clean up authorization data", err)
+            }
+        }
+
+        private suspend fun create(
+            secureArea: SecureArea,
+            credentialOffer: CredentialOffer,
+            clientPreferences: OpenID4VCIClientPreferences,
+            authorizationData: OpenID4VCIAuthorizationData
+        ): OpenID4VCIProvisioningClient {
+            require(authorizationData.secureAreaId == secureArea.identifier)
             val issuerConfig = IssuerConfiguration.get(
                 url = credentialOffer.issuerUri,
                 clientPreferences = clientPreferences
@@ -619,6 +716,8 @@ internal class OpenID4VCIProvisioningClient(
                 credentialOffer = credentialOffer,
                 issuerConfiguration = issuerConfig,
                 authorizationConfiguration = authorizationConfiguration,
+                secureArea = secureArea,
+                authorizationData = authorizationData
             )
         }
     }

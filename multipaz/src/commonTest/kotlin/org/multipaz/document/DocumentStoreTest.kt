@@ -127,7 +127,7 @@ class DocumentStoreTest {
         runCurrent()
         assertEquals(DocumentUpdated(doc2.identifier), events.last())
 
-        doc1.simpleMetadata.setMetadata("foo", "bar", null, null, null)
+        doc1.simpleMetadata.setMetadata("foo", "bar", null, null, null, null)
         runCurrent()
         assertEquals(DocumentUpdated(doc1.identifier), events.last())
 
@@ -453,14 +453,14 @@ class DocumentStoreTest {
         }
         val document = documentStore.createDocument {
             val appData = it as DocumentMetadata
-            appData.setMetadata("init", "", null, null, null)
+            appData.setMetadata("init", "", null, null, null, null)
         }
         val appData = document.simpleMetadata
         assertFalse(appData.provisioned)
         assertEquals("init", appData.displayName)
         appData.markAsProvisioned()
         assertTrue(appData.provisioned)
-        appData.setMetadata("foo", "bar", ByteString(1, 2, 3), null, null)
+        appData.setMetadata("foo", "bar", ByteString(1, 2, 3), null, null, null)
         assertEquals("foo", appData.displayName)
         assertEquals(ByteString(1, 2, 3), appData.cardArt)
 

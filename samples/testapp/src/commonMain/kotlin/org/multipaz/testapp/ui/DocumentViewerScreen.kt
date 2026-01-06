@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,7 +23,9 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.compose.document.DocumentModel
+import org.multipaz.document.Document
 import org.multipaz.testapp.rememberInhibitNfcObserveMode
 
 @Composable
@@ -31,6 +34,7 @@ fun DocumentViewerScreen(
     documentId: String,
     showToast: (message: String) -> Unit,
     onViewCredential: (documentId: String, credentialId: String) -> Unit,
+    onProvisionMore: (document: Document, authorizationData: ByteString) -> Unit
 ) {
     val documentInfos = documentModel.documentInfos.collectAsState().value
     val documentInfo = documentInfos[documentId]
@@ -41,6 +45,7 @@ fun DocumentViewerScreen(
         if (documentInfo == null) {
             Text("No document for identifier ${documentId}")
         } else {
+            val metadata = documentInfo.document.metadata
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -58,7 +63,7 @@ fun DocumentViewerScreen(
             ) {
                 Text(
                     modifier = Modifier.padding(8.dp),
-                    text = documentInfo.document.metadata.typeDisplayName ?: "(typeDisplayName not set)",
+                    text = metadata.typeDisplayName ?: "(typeDisplayName not set)",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary
                 )
@@ -74,15 +79,15 @@ fun DocumentViewerScreen(
             ) {
                 KeyValuePairText(
                     keyText = "Provisioned",
-                    valueText = if (documentInfo.document.metadata.provisioned) "Yes" else "No"
+                    valueText = if (metadata.provisioned) "Yes" else "No"
                 )
                 KeyValuePairText(
                     keyText = "Document Type",
-                    valueText = documentInfo.document.metadata.typeDisplayName ?: "(typeDisplayName not set)"
+                    valueText = metadata.typeDisplayName ?: "(typeDisplayName not set)"
                 )
                 KeyValuePairText(
                     keyText = "Document Name",
-                    valueText = documentInfo.document.metadata.displayName ?: "(displayName not set)"
+                    valueText = metadata.displayName ?: "(displayName not set)"
                 )
                 Text(
                     text = "Credentials",
@@ -120,6 +125,13 @@ fun DocumentViewerScreen(
                                 }
                             }
                         )
+                    }
+                }
+                metadata.authorizationData?.let { authorizationData ->
+                    Button(onClick = {
+                        onProvisionMore(documentInfo.document, authorizationData)
+                    }) {
+                        Text("Provision more credentials")
                     }
                 }
             }
