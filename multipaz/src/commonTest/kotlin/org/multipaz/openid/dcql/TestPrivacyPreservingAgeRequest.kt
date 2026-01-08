@@ -7,6 +7,7 @@ import org.multipaz.cbor.toDataItemFullDate
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
+import org.multipaz.datetime.formatLocalized
 import org.multipaz.presentment.model.DocumentStoreTestHarness
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -180,6 +181,12 @@ class TestPrivacyPreservingAgeRequest {
         val harness = DocumentStoreTestHarness()
         harness.initialize()
         addMdl_with_BirthDate(harness)
+        val result = ageMdlQuery().execute(
+            presentmentSource = harness.presentmentSource
+        ).prettyPrint().trim()
+
+        val dateValue = LocalDate.parse("1976-03-02").formatLocalized()
+
         assertEquals(
             """
                 credentialSets:
@@ -204,11 +211,9 @@ class TestPrivacyPreservingAgeRequest {
                                       nameSpace: org.iso.18013.5.1
                                       dataElement: birth_date
                                       displayName: Date of Birth
-                                      value: Mar 2, 1976
+                                      value: $dateValue
             """.trimIndent().trim(),
-            ageMdlQuery().execute(
-                presentmentSource = harness.presentmentSource
-            ).prettyPrint().trim()
+            result
         )
     }
 
