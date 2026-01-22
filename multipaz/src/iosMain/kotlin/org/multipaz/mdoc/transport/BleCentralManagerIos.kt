@@ -16,7 +16,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -577,13 +576,8 @@ internal class BleCentralManagerIos : BleCentralManager {
 
     override fun close() {
         centralManager.delegate = null
-        // Delayed closed because there's no way to flush L2CAP connections...
         peripheral?.let {
-            CoroutineScope(Dispatchers.IO).launch {
-                // Need 25 seconds for ZKP since the proofs are large
-                delay(25_000)
-                centralManager.cancelPeripheralConnection(it)
-            }
+            centralManager.cancelPeripheralConnection(it)
         }
         peripheral?.delegate = null
         peripheral = null

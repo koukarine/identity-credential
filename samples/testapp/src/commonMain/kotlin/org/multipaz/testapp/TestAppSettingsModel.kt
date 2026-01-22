@@ -140,7 +140,6 @@ class TestAppSettingsModel private constructor(
         bind(presentmentBleL2CapEnabled, "presentmentBleL2CapEnabled", false)
         bind(presentmentBleL2CapInEngagementEnabled, "presentmentBleL2CapInEngagementEnabled", true)
         bind(presentmentUseNegotiatedHandover, "presentmentUseNegotiatedHandover", true)
-        bind(presentmentAllowMultipleRequests, "presentmentAllowMultipleRequests", false)
         bind(presentmentNegotiatedHandoverPreferredOrder, "presentmentNegotiatedHandoverPreferredOrder",
             listOf(
                 "ble:central_client_mode:",
@@ -176,7 +175,6 @@ class TestAppSettingsModel private constructor(
     val presentmentBleL2CapEnabled = MutableStateFlow<Boolean>(false)
     val presentmentBleL2CapInEngagementEnabled = MutableStateFlow<Boolean>(false)
     val presentmentUseNegotiatedHandover = MutableStateFlow<Boolean>(false)
-    val presentmentAllowMultipleRequests = MutableStateFlow<Boolean>(false)
     val presentmentNegotiatedHandoverPreferredOrder = MutableStateFlow<List<String>>(listOf())
     val presentmentShowConsentPrompt = MutableStateFlow<Boolean>(false)
     val presentmentRequireAuthentication = MutableStateFlow<Boolean>(false)

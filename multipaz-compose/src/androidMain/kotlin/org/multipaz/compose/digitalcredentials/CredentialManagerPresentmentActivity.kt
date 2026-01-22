@@ -6,38 +6,37 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.runtime.collectAsState
 import androidx.core.graphics.drawable.toDrawable
 import androidx.credentials.DigitalCredential
 import androidx.credentials.ExperimentalDigitalCredentialApi
 import androidx.credentials.GetCredentialResponse
 import androidx.credentials.GetDigitalCredentialOption
+import androidx.credentials.exceptions.GetCredentialCustomException
 import androidx.credentials.provider.PendingIntentHandler
 import androidx.credentials.provider.ProviderGetCredentialRequest
 import androidx.credentials.registry.provider.selectedEntryId
 import androidx.fragment.app.FragmentActivity
 import coil3.ImageLoader
+import coil3.network.ktor3.KtorNetworkFetcherFactory
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.android.Android
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
-import org.multipaz.compose.presentment.Presentment
+import org.multipaz.compose.branding.Branding
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.context.initializeApplication
 import org.multipaz.digitalcredentials.getAppOrigin
 import org.multipaz.digitalcredentials.lookupForCredmanId
-import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.presentment.model.DigitalCredentialsPresentmentMechanism
-import org.multipaz.presentment.model.PresentmentModel
 import org.multipaz.presentment.model.PresentmentSource
-import org.multipaz.prompt.PromptModel
+import org.multipaz.presentment.model.digitalCredentialsPresentment
+import org.multipaz.prompt.AndroidPromptModel
 import org.multipaz.util.Logger
 import java.lang.IllegalStateException
 
@@ -46,7 +45,8 @@ import java.lang.IllegalStateException
  *
  * Applications should subclass this and include the appropriate stanzas in its manifest
  *
- * See the [MpzCmpWallet](https://github.com/davidz25/MpzCmpWallet) sample for an example.
+ * See `ComposeWallet` in [Multipaz Samples](https://github.com/openwallet-foundation/multipaz-samples)
+ * for an example.
  */
 abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
     companion object {
@@ -56,13 +56,7 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
     /**
      * Settings provided by the application for specifying what to present.
      *
-     * @property appName the application name.
-     * @property appIcon the application icon.
-     * @property promptModel the [PromptModel] to use.
-     * @property applicationTheme the theme to use.
-     * @property documentTypeRepository a [DocumentTypeRepository]
-     * @property presentmentSource the [PresentmentSource] to use as the source of truth for what to present.
-     * @property imageLoader the [ImageLoader] to use.
+     * @property source the [PresentmentSource] to use as the source of truth for what to present.
      * @property privilegedAllowList a string containing JSON with an allow-list of privileged browsers/apps
      *   that the applications trusts to provide the correct origin. For the format of the JSON see
      *   [CallingAppInfo.getOrigin()](https://developer.android.com/reference/androidx/credentials/provider/CallingAppInfo#getOrigin(kotlin.String))
@@ -70,14 +64,8 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
      *   [public list of browsers trusted by Google Password Manager](https://gstatic.com/gpm-passkeys-privileged-apps/apps.json).
      */
     data class Settings(
-        val appName: String,
-        val appIcon: @Composable () -> Painter,
-        val promptModel: PromptModel,
-        val applicationTheme: @Composable (content: @Composable () -> Unit) -> Unit,
-        val documentTypeRepository: DocumentTypeRepository,
-        val presentmentSource: PresentmentSource,
-        val imageLoader: ImageLoader,
-        val privilegedAllowList: String
+        val source: PresentmentSource,
+        val privilegedAllowList: String,
     )
 
     /**
@@ -87,7 +75,7 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
      */
     abstract suspend fun getSettings(): Settings
 
-    private val presentmentModel = PresentmentModel()
+    private val promptModel = AndroidPromptModel.Builder().apply { addCommonDialogs() }.build()
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,14 +88,27 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
             setTranslucent(true)
         }
 
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.Main + promptModel).launch {
             startPresentment(getSettings())
         }
     }
 
     @OptIn(ExperimentalDigitalCredentialApi::class)
     private suspend fun startPresentment(settings: Settings) {
-        presentmentModel.setPromptModel(settings.promptModel)
+        val imageLoader = ImageLoader.Builder(applicationContext).components {
+            add(KtorNetworkFetcherFactory(HttpClient(Android.create())))
+        }.build()
+
+        setContent {
+            val currentBranding = Branding.Current.collectAsState().value
+            currentBranding.theme {
+                PromptDialogs(
+                    promptModel = promptModel,
+                    imageLoader = imageLoader,
+                )
+            }
+        }
+
         try {
             val credentialRequest = PendingIntentHandler.retrieveProviderGetCredentialRequest(intent)!!
 
@@ -124,71 +125,38 @@ abstract class CredentialManagerPresentmentActivity: FragmentActivity() {
             Logger.i(TAG, "SelectionInfo: $selectionInfo")
 
             val documents = selectionInfo.documentIds.map {
-                settings.presentmentSource.documentStore.lookupForCredmanId(it)
+                settings.source.documentStore.lookupForCredmanId(it)
                     ?: throw Error("No registered document for document ID $it")
             }
             // Find request matching the protocol for the selected entry...
             val requestForSelectedEntry = json["requests"]!!.jsonArray.find {
                 (it as JsonObject)["protocol"]!!.jsonPrimitive.content == selectionInfo.protocol
             }!!.jsonObject
-            val mechanism = object : DigitalCredentialsPresentmentMechanism(
-                appId = callingPackageName,
-                origin = origin,
+            val response = digitalCredentialsPresentment(
                 protocol = requestForSelectedEntry["protocol"]!!.jsonPrimitive.content,
                 data = requestForSelectedEntry["data"]!!.jsonObject,
-                preselectedDocuments = documents
-            ) {
-                override fun sendResponse(
-                    protocol: String,
-                    data: JsonObject
-                ) {
-                    val resultData = Intent()
-                    val json = Json.encodeToString(
-                        buildJsonObject {
-                            put("protocol", protocol)
-                            put("data", data)
-                        }
-                    )
-                    Logger.i(TAG, "Size of JSON response for protocol $protocol: ${json.length} bytes")
-                    val response = GetCredentialResponse(DigitalCredential(json))
-                    PendingIntentHandler.setGetCredentialResponse(
-                        resultData,
-                        response
-                    )
-                    setResult(RESULT_OK, resultData)
-                }
-
-                override fun close() {
-                    Logger.i(TAG, "close")
-                }
-            }
-
-            presentmentModel.reset()
-            presentmentModel.setConnecting()
-            presentmentModel.setMechanism(mechanism)
-
+                appId = callingPackageName,
+                origin = origin,
+                preselectedDocuments = documents,
+                source = settings.source
+            )
+            val jsonString = Json.encodeToString(response)
+            Logger.i(TAG, "Size of JSON response: ${jsonString.length} bytes")
+            val resultData = Intent()
+            val credentialManagerResponse = GetCredentialResponse(DigitalCredential(jsonString))
+            PendingIntentHandler.setGetCredentialResponse(resultData, credentialManagerResponse)
+            setResult(RESULT_OK, resultData)
         } catch (e: Throwable) {
             Logger.i(TAG, "Error processing request", e)
-            e.printStackTrace()
+            val resultData = Intent()
+            val credentialManagerException = GetCredentialCustomException(
+                type = "org.multipaz.Error",
+                errorMessage = e.message
+            )
+            PendingIntentHandler.setGetCredentialException(resultData, credentialManagerException)
+            setResult(RESULT_OK, resultData)
+        } finally {
             finish()
-            return
-        }
-
-        setContent {
-            settings.applicationTheme {
-                PromptDialogs(settings.promptModel)
-                Presentment(
-                    appName = settings.appName,
-                    appIconPainter = settings.appIcon(),
-                    presentmentModel = presentmentModel,
-                    presentmentSource = settings.presentmentSource,
-                    documentTypeRepository = settings.documentTypeRepository,
-                    imageLoader = settings.imageLoader,
-                    onPresentmentComplete = { finish() },
-                    onlyShowConsentPrompt = true,
-                    showCancelAsBack = true
-                )
-            }
         }
     }
 

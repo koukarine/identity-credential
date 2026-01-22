@@ -192,7 +192,7 @@ data class X509Crl(override val encoded: ByteString): X509Signed() {
     }
 }
 
-suspend fun buildCrl(
+suspend inline fun buildX509Crl(
     signingKey: AsymmetricKey,
     issuer: X500Name,
     thisUpdate: Instant,

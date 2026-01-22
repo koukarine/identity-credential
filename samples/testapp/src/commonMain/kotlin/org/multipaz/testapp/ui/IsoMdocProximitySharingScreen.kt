@@ -5,36 +5,38 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil3.ImageLoader
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.painterResource
 import org.multipaz.compose.permissions.rememberBluetoothEnabledState
 import org.multipaz.compose.permissions.rememberBluetoothPermissionState
 import org.multipaz.compose.presentment.MdocProximityQrPresentment
 import org.multipaz.compose.presentment.MdocProximityQrSettings
 import org.multipaz.compose.qrcode.generateQrCode
-import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.transport.MdocTransportOptions
-import org.multipaz.presentment.model.PresentmentModel
 import org.multipaz.presentment.model.PresentmentSource
 import org.multipaz.prompt.PromptModel
-import org.multipaz.testapp.TestAppConfiguration
 import org.multipaz.testapp.TestAppSettingsModel
 import org.multipaz.util.UUID
+import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "IsoMdocProximitySharingScreen"
 
@@ -42,19 +44,17 @@ private const val TAG = "IsoMdocProximitySharingScreen"
 @Composable
 fun IsoMdocProximitySharingScreen(
     presentmentSource: PresentmentSource,
-    presentmentModel: PresentmentModel,
     settingsModel: TestAppSettingsModel,
     promptModel: PromptModel,
-    documentTypeRepository: DocumentTypeRepository,
-    imageLoader: ImageLoader,
     showToast: (message: String) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope { promptModel }
     val blePermissionState = rememberBluetoothPermissionState()
     val bleEnabledState = rememberBluetoothEnabledState()
+    var disablePlatformImplementation by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(5.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -81,17 +81,18 @@ fun IsoMdocProximitySharingScreen(
                 }
             }
         } else {
+            SettingToggle(
+                title = "Disable platform-specific implementation",
+                isChecked = disablePlatformImplementation,
+                onCheckedChange = { newValue ->
+                    disablePlatformImplementation = newValue
+                }
+            )
             MdocProximityQrPresentment(
                 modifier = Modifier,
-                appName = TestAppConfiguration.appName,
-                appIconPainter = painterResource(TestAppConfiguration.appIcon),
-                presentmentModel = presentmentModel,
-                presentmentSource = presentmentSource,
+                source = presentmentSource,
                 promptModel = promptModel,
-                documentTypeRepository = documentTypeRepository,
-                imageLoader = imageLoader,
-                allowMultipleRequests = settingsModel.presentmentAllowMultipleRequests.value,
-                showQrButton = { onQrButtonClicked ->
+                prepareSettings = { generateQrCode ->
                     Button(onClick = {
                         val connectionMethods = mutableListOf<MdocConnectionMethod>()
                         val bleUuid = UUID.randomUUID()
@@ -123,7 +124,7 @@ fun IsoMdocProximitySharingScreen(
                                 )
                             )
                         }
-                        onQrButtonClicked(
+                        generateQrCode(
                             MdocProximityQrSettings(
                                 availableConnectionMethods = connectionMethods,
                                 createTransportOptions = MdocTransportOptions(
@@ -136,7 +137,7 @@ fun IsoMdocProximitySharingScreen(
                         Text("Present mDL via QR")
                     }
                 },
-                showQrCode = { uri ->
+                showQrCode = { uri, reset ->
                     val qrCodeBitmap = remember { generateQrCode(uri) }
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -149,11 +150,30 @@ fun IsoMdocProximitySharingScreen(
                             contentDescription = null,
                             contentScale = ContentScale.FillWidth
                         )
-                        Button(onClick = { presentmentModel.reset() }) {
+                        Button(onClick = { reset() }) {
                             Text("Cancel")
                         }
                     }
-                }
+                },
+                showTransacting = { reset ->
+                    Text("Transacting")
+                    Button(onClick = { reset() }) {
+                        Text("Cancel")
+                    }
+                },
+                showCompleted = { error, reset ->
+                    if (error != null) {
+                        Text("Something went wrong: $error")
+                    } else {
+                        Text("The data was shared")
+                    }
+                    LaunchedEffect(Unit) {
+                        delay(1.5.seconds)
+                        reset()
+                    }
+                },
+                eDeviceKeyCurve = settingsModel.presentmentSessionEncryptionCurve.value,
+                disablePlatformSpecificImplementation = disablePlatformImplementation
             )
         }
     }

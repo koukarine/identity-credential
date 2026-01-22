@@ -18,7 +18,7 @@ import kotlinx.serialization.json.buildJsonObject
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.crypto.buildCrl
+import org.multipaz.crypto.buildX509Crl
 import org.multipaz.util.Platform
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -105,7 +105,7 @@ object MultipazCtl {
         }
 
         val iacaCrl = runBlocking {
-            buildCrl(
+            buildX509Crl(
                 signingKey = AsymmetricKey.anonymous(iacaKey),
                 issuer = subjectAndIssuer,
                 thisUpdate = validFrom,
@@ -238,7 +238,7 @@ object MultipazCtl {
         }
 
         val readerRootCrl = runBlocking {
-            buildCrl(
+            buildX509Crl(
                 signingKey = AsymmetricKey.anonymous(readerRootKey),
                 issuer = subjectAndIssuer,
                 thisUpdate = validFrom,

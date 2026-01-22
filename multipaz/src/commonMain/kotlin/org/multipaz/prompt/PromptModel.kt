@@ -2,6 +2,9 @@ package org.multipaz.prompt
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 
@@ -47,7 +50,7 @@ abstract class PromptModel protected constructor(
      *
      * This method can attempt to launch UI, e.g. start an `Activity` on Android.
      */
-    open suspend fun launchUi(dialogModel: PromptDialogModel<*,*>) {}
+    protected open suspend fun launchUi(dialogModel: PromptDialogModel<*,*>) {}
 
     private val promptDialogModels: Map<PromptDialogModel.DialogType<*>, PromptDialogModel<*,*>> =
         builder.promptDialogModels.toMap()
@@ -100,9 +103,30 @@ abstract class PromptModel protected constructor(
 
         open fun addCommonDialogs() = apply {
             addPromptDialogModel(PassphrasePromptDialogModel())
+            addPromptDialogModel(ConsentPromptDialogModel())
         }
 
         abstract fun build(): PromptModel
+    }
+
+    private val mutableNumPromptsShowing = MutableStateFlow(0)
+
+    /**
+     * Number of prompts currently showing.
+     */
+    val numPromptsShowing: StateFlow<Int> = mutableNumPromptsShowing.asStateFlow()
+
+    // For invocations from PromptDialogModel:
+    internal suspend fun callPromptIsShowing(dialogModel: PromptDialogModel<*,*>) {
+        mutableNumPromptsShowing.value += 1
+    }
+
+    internal suspend fun callPromptIsNoLongerShowing(dialogModel: PromptDialogModel<*,*>) {
+        mutableNumPromptsShowing.value -= 1
+    }
+
+    internal suspend fun callLaunchUi(dialogModel: PromptDialogModel<*,*>) {
+        launchUi(dialogModel)
     }
 
     companion object {

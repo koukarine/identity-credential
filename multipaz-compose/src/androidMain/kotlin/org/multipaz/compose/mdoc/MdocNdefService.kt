@@ -1,19 +1,21 @@
 package org.multipaz.compose.mdoc
 
+import android.app.Activity
 import android.content.Intent
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
 import org.multipaz.context.initializeApplication
 import org.multipaz.crypto.Crypto
@@ -28,17 +30,17 @@ import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.mdoc.transport.advertise
 import org.multipaz.mdoc.transport.waitForConnection
-import org.multipaz.presentment.model.MdocPresentmentMechanism
-import org.multipaz.presentment.model.PresentmentModel
-import org.multipaz.presentment.model.PresentmentTimeout
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
 import org.multipaz.nfc.ResponseApdu
+import org.multipaz.presentment.model.Iso18013Presentment
+import org.multipaz.presentment.model.PresentmentCanceled
+import org.multipaz.presentment.model.PresentmentModel
+import org.multipaz.presentment.model.PresentmentSource
 import org.multipaz.prompt.PromptModel
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * Base class for implementing NFC engagement according to ISO/IEC 18013-5:2021.
@@ -46,20 +48,12 @@ import kotlin.time.Duration.Companion.seconds
  * Applications should subclass this and include the appropriate stanzas in its manifest
  * for binding to the NDEF Type 4 tag AID (D2760000850101).
  *
- * See the [MpzCmpWallet](https://github.com/davidz25/MpzCmpWallet) sample for an example.
+ * See `ComposeWallet` in [Multipaz Samples](https://github.com/openwallet-foundation/multipaz-samples)
+ * for an example.
  */
 abstract class MdocNdefService: HostApduService() {
     companion object {
         private val TAG = "MdocNdefService"
-
-        private var engagement: MdocNfcEngagementHelper? = null
-        private var disableEngagementJob: Job? = null
-        private var listenForCancellationFromUiJob: Job? = null
-
-        /**
-         * The [PresentmentModel] used for all ISO/IEC 18013-5:2021 presentments using NFC engagement.
-         */
-        val presentmentModel = PresentmentModel()
     }
 
     private fun vibrate(pattern: List<Int>) {
@@ -79,17 +73,43 @@ abstract class MdocNdefService: HostApduService() {
     override fun onDestroy() {
         Logger.i(TAG, "onDestroy")
         super.onDestroy()
-        commandApduListenJob?.cancel()
+        engagementJob?.cancel()
     }
 
-    private var commandApduListenJob: Job? = null
-    private val commandApduChannel = Channel<CommandApdu>(Channel.Factory.UNLIMITED)
+    // A job started when the reader has selected us and used for establishing
+    // NFC engagement. Runs until NFC engagement completes successfully or fails.
+    private var engagementJob: Job? = null
+
+    // A job started when the reader has selected us and used for listening for
+    // a signal from the UI that it wants to cancel.
+    private var listenForCancellationFromUiJob: Job? = null
+
+    // A job started after NFC engagement completes successfully and
+    // runs until the remote reader disconnects.
+    private var transactionJob: Job? = null
+
+    private var engagement: MdocNfcEngagementHelper? = null
+
+    // Channel used for bouncing data from processCommandApdu() and onDeactivated() to engagementJob coroutine.
+    private val channel = Channel<Data>(Channel.Factory.UNLIMITED)
+
+    private sealed class Data
+
+    private data class CommandApduData(
+        val commandApdu: CommandApdu
+    ): Data()
+
+    private data class DeactivatedData(
+        val reason: Int
+    ): Data()
 
     /**
      * Settings provided by the application for how to configure NFC engagement.
      *
+     * @property source the [PresentmentSource] to use as the source of truth for what to present.
+     * @property promptModel the [PromptModel] to use.
+     * @property activityClass the activity to launch or `null` to not launch an activity.
      * @property sessionEncryptionCurve the Elliptic Curve Cryptography curve to use for session encryption.
-     * @property allowMultipleRequests whether to allow multiple requests.
      * @property useNegotiatedHandover if `true` NFC negotiated handover will be used, otherwise NFC static handover.
      * @property negotiatedHandoverPreferredOrder a list of the preferred order for which kind of
      *   [org.multipaz.mdoc.transport.MdocTransport] to create when using NFC negotiated handover.
@@ -100,13 +120,13 @@ abstract class MdocNdefService: HostApduService() {
      * @property staticHandoverNfcDataTransferEnabled `true` if NFC data transfer should be offered when using NFC
      *   static handover
      * @property transportOptions the [MdocTransportOptions] to use for newly created connections.
-     * @property promptModel the [PromptModel] to use.
-     * @property presentmentActivityClass the class of the activty to create for, must be derived
-     *   from [MdocNfcPresentmentActivity].
      */
     data class Settings(
+        val source: PresentmentSource,
+        val promptModel: PromptModel,
+        val presentmentModel: PresentmentModel?,
+        val activityClass: Class<out Activity>?,
         val sessionEncryptionCurve: EcCurve,
-        val allowMultipleRequests: Boolean,
 
         val useNegotiatedHandover: Boolean,
         val negotiatedHandoverPreferredOrder: List<String>,
@@ -115,10 +135,7 @@ abstract class MdocNdefService: HostApduService() {
         val staticHandoverBlePeripheralServerModeEnabled: Boolean,
         val staticHandoverNfcDataTransferEnabled: Boolean,
 
-        val transportOptions: MdocTransportOptions,
-
-        val promptModel: PromptModel,
-        val presentmentActivityClass: Class<out MdocNfcPresentmentActivity>
+        val transportOptions: MdocTransportOptions
     )
 
     /**
@@ -139,19 +156,32 @@ abstract class MdocNdefService: HostApduService() {
 
         initializeApplication(applicationContext)
 
-        // Essentially, start a coroutine on an I/O thread for handling incoming APDUs
-        commandApduListenJob = CoroutineScope(Dispatchers.IO).launch {
+        engagement = null
+        transactionJob = null
+
+        // Start a coroutine on an I/O thread for handling incoming APDUs and deactivation events
+        // from the OS in processCommandApdu() and onDeactivated() overrides. This is so we can
+        // use suspend functions.
+        //
+        engagementJob = CoroutineScope(Dispatchers.IO).launch {
             while (true) {
-                val commandApdu = commandApduChannel.receive()
-                val responseApdu = processCommandApdu(commandApdu)
-                if (responseApdu != null) {
-                    sendResponseApdu(responseApdu.encode())
+                val data = channel.receive()
+                when (data) {
+                    is CommandApduData -> {
+                        processCommandApdu(data.commandApdu)?.let { responseApdu ->
+                            sendResponseApdu(responseApdu.encode())
+                        }
+                    }
+                    is DeactivatedData -> {
+                        processDeactivated(data.reason)
+                    }
                 }
             }
         }
     }
 
-    private var started = false
+    private var engagementStarted = false
+    private var engagementComplete = false
 
     private suspend fun startEngagement() {
         Logger.i(TAG, "startEngagement")
@@ -165,40 +195,23 @@ abstract class MdocNdefService: HostApduService() {
         val t1 = Clock.System.now()
         Logger.i(TAG, "Settings provided by application in ${(t1 - t0).inWholeMilliseconds} ms")
 
-        disableEngagementJob?.cancel()
-        disableEngagementJob = null
-        listenForCancellationFromUiJob?.cancel()
-        listenForCancellationFromUiJob = null
-
         val eDeviceKey = Crypto.createEcPrivateKey(settings.sessionEncryptionCurve)
         val timeStarted = Clock.System.now()
 
-        presentmentModel.reset()
-        presentmentModel.setPromptModel(settings.promptModel)
-        presentmentModel.setConnecting()
-
-        // The UI consuming [PresentationModel] - for example the [Presentment] composable in this library - may
-        // have a cancel button which will trigger COMPLETED state when pressed. Need to listen for that.
-        //
-        listenForCancellationFromUiJob = presentmentModel.presentmentScope.launch {
-            presentmentModel.state
-                .collect { state ->
-                    if (state == PresentmentModel.State.COMPLETED) {
-                        disableEngagementJob?.cancel()
-                        disableEngagementJob = null
-                    }
+        listenForCancellationFromUiJob = CoroutineScope(Dispatchers.IO).launch {
+            settings.presentmentModel?.state?.collect { state ->
+                if (state == PresentmentModel.State.CanceledByUser) {
+                    engagementJob?.cancel()
+                    engagementJob = null
+                    transactionJob?.cancel()
+                    transactionJob = null
+                    listenForCancellationFromUiJob?.cancel()
+                    listenForCancellationFromUiJob = null
                 }
+            }
         }
 
-        val intent = Intent(applicationContext, settings.presentmentActivityClass)
-        intent.addFlags(
-            Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_NO_HISTORY or
-                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
-                    Intent.FLAG_ACTIVITY_NO_ANIMATION
-        )
-        Logger.i(TAG, "startActivity on $intent")
-        applicationContext.startActivity(intent)
+        settings.presentmentModel?.setConnecting()
 
         fun negotiatedHandoverPicker(connectionMethods: List<MdocConnectionMethod>): MdocConnectionMethod {
             Logger.i(TAG, "Negotiated Handover available methods: $connectionMethods")
@@ -261,29 +274,50 @@ abstract class MdocNdefService: HostApduService() {
         engagement = MdocNfcEngagementHelper(
             eDeviceKey = eDeviceKey.publicKey,
             onHandoverComplete = { connectionMethods, encodedDeviceEngagement, handover ->
+                // OK, we're done with engagement and we're communicating with a bona fide ISO/IEC 18013-5:2021 reader.
+                // Start the activity and also launch a new job for handling the transaction...
+                //
+                //engagementComplete = true
                 vibrateSuccess()
-                val duration = Clock.System.now() - timeStarted
-                listenOnMethods(
-                    settings = settings,
-                    connectionMethods = connectionMethods,
-                    encodedDeviceEngagement = encodedDeviceEngagement,
-                    handover = handover,
-                    eDeviceKey = eDeviceKey,
-                    engagementDuration = duration
-                )
+
+                if (settings.activityClass != null) {
+                    val intent = Intent(applicationContext, settings.activityClass)
+                    intent.addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_NO_HISTORY or
+                                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                                Intent.FLAG_ACTIVITY_NO_ANIMATION
+                    )
+                    applicationContext.startActivity(intent)
+                }
+
+                transactionJob = CoroutineScope(Dispatchers.IO + settings.promptModel).launch {
+                    val duration = Clock.System.now() - timeStarted
+                    startTransaction(
+                        settings = settings,
+                        connectionMethods = connectionMethods,
+                        encodedDeviceEngagement = encodedDeviceEngagement,
+                        handover = handover,
+                        eDeviceKey = eDeviceKey,
+                        engagementDuration = duration
+                    )
+                }
             },
             onError = { error ->
-                Logger.w(TAG, "Engagement failed", error)
-                error.printStackTrace()
-                vibrateError()
-                engagement = null
+                // Engagement failed. This can happen if a NDEF tag reader - for example another unlocked
+                // Android device - is reading this device. So we really don't want any user-visible side-effects
+                // here such as showing an error or vibrating the phone.
+                //
+                engagementComplete = true
+                settings.presentmentModel?.setCompleted(error)
+                Logger.w(TAG, "Engagement failed. Maybe this wasn't an ISO mdoc reader.", error)
             },
             staticHandoverMethods = staticHandoverConnectionMethods,
             negotiatedHandoverPicker = negotiatedHandoverPicker
         )
     }
 
-    private fun listenOnMethods(
+    private suspend fun startTransaction(
         settings: Settings,
         connectionMethods: List<MdocConnectionMethod>,
         encodedDeviceEngagement: ByteString,
@@ -291,27 +325,41 @@ abstract class MdocNdefService: HostApduService() {
         eDeviceKey: EcPrivateKey,
         engagementDuration: Duration,
     ) {
-        presentmentModel.presentmentScope.launch {
-            val transports = connectionMethods.advertise(
-                role = MdocRole.MDOC,
-                transportFactory = MdocTransportFactory.Default,
-                options = settings.transportOptions,
+        Logger.i(TAG, "startEngagement - advertising and waiting for connection")
+        val transports = connectionMethods.advertise(
+            role = MdocRole.MDOC,
+            transportFactory = MdocTransportFactory.Default,
+            options = settings.transportOptions,
+        )
+        val transport = transports.waitForConnection(
+            eSenderKey = eDeviceKey.publicKey,
+        )
+
+        try {
+            settings.presentmentModel?.setConnecting()
+            Iso18013Presentment(
+                transport = transport,
+                eDeviceKey = eDeviceKey,
+                deviceEngagement = Cbor.decode(encodedDeviceEngagement.toByteArray()),
+                handover = handover,
+                source = settings.source,
+                keyAgreementPossible = listOf(eDeviceKey.curve),
+                onWaitingForRequest = { settings.presentmentModel?.setWaitingForReader() },
+                onWaitingForUserInput = { settings.presentmentModel?.setWaitingForUserInput() },
+                onDocumentsInFocus = { documents ->
+                    settings.presentmentModel?.setDocumentsSelected(selectedDocuments = documents)
+                },
+                onSendingResponse = { settings.presentmentModel?.setSending() }
             )
-            val transport = transports.waitForConnection(
-                eSenderKey = eDeviceKey.publicKey,
-            )
-            presentmentModel.setMechanism(
-                MdocPresentmentMechanism(
-                    transport = transport,
-                    eDeviceKey = eDeviceKey,
-                    encodedDeviceEngagement = encodedDeviceEngagement,
-                    handover = handover,
-                    engagementDuration = engagementDuration,
-                    allowMultipleRequests = settings.allowMultipleRequests
-                )
-            )
-            disableEngagementJob?.cancel()
-            disableEngagementJob = null
+            settings.presentmentModel?.setCompleted(null)
+        } catch (e: Throwable) {
+            Logger.w(TAG, "Caught error while performing 18013-5 transaction", e)
+            if (e is CancellationException) {
+                settings.presentmentModel?.setCompleted(PresentmentCanceled("Presentment was cancelled"))
+            } else {
+                settings.presentmentModel?.setCompleted(e)
+            }
+        } finally {
             listenForCancellationFromUiJob?.cancel()
             listenForCancellationFromUiJob = null
         }
@@ -334,8 +382,8 @@ abstract class MdocNdefService: HostApduService() {
             return ResponseApdu(status = Nfc.RESPONSE_STATUS_SUCCESS)
         }
 
-        if (!started) {
-            started = true
+        if (!engagementStarted) {
+            engagementStarted = true
             startEngagement()
         }
 
@@ -353,36 +401,47 @@ abstract class MdocNdefService: HostApduService() {
                 return responseApdu
             }
         } catch (e: Throwable) {
-            Logger.e(TAG, "Error processing APDU in MdocNfcEngagementHandler", e)
-            e.printStackTrace()
+            Logger.e(TAG, "Error processing APDU in MdocNfcEngagementHelper", e)
         }
         return null
+    }
+
+    // Called by coroutine running in I/O thread, see onCreate() for details
+    private suspend fun processDeactivated(reason: Int) {
+        try {
+            engagement?.processDeactivated(reason)
+        } catch (e: Throwable) {
+            Logger.e(TAG, "Error processing deactivation event in MdocNfcEngagementHelper", e)
+        }
     }
 
     // Called by OS when an APDU arrives
     override fun processCommandApdu(encodedCommandApdu: ByteArray, extras: Bundle?): ByteArray? {
         // Bounce the APDU to processCommandApdu() above via the coroutine in I/O thread set up in onCreate()
-        val unused = commandApduChannel.trySend(CommandApdu.Companion.decode(encodedCommandApdu))
+        val commandApdu = CommandApdu.decode(encodedCommandApdu)
+        if (!engagementComplete) {
+            val unused = channel.trySend(CommandApduData(commandApdu))
+        } else {
+            Logger.w(TAG, "Engagement complete but received APDU $commandApdu")
+        }
         return null
     }
 
+    // Called by OS when NFC tag reader deactivates
     override fun onDeactivated(reason: Int) {
         Logger.i(TAG, "onDeactivated: reason=$reason")
-        started = false
-        numApdusReceived = 0
-        // If the reader hasn't connected by the time NFC interaction ends, make sure we only
-        // wait for a limited amount of time.
-        if (presentmentModel.state.value == PresentmentModel.State.CONNECTING) {
-            val timeout = 15.seconds
-            Logger.i(TAG, "Reader hasn't connected at NFC deactivation time, scheduling $timeout timeout for closing")
-            disableEngagementJob = CoroutineScope(Dispatchers.IO).launch {
-                delay(timeout)
-                if (presentmentModel.state.value == PresentmentModel.State.CONNECTING) {
-                    presentmentModel.setCompleted(PresentmentTimeout("Reader didn't connect inside $timeout, closing"))
-                }
-                engagement = null
-                disableEngagementJob = null
-            }
+        // Bounce the event to processDeactivated() above via the coroutine in I/O thread set up in onCreate()
+        if (!engagementComplete) {
+            val unused = channel.trySend(DeactivatedData(reason))
         }
+
+        // Android might reuse this service for the next tap. That is, we can't rely on onDestroy()
+        // firing right after this, then onCreate(). So reset everything so next time processCommandApdu()
+        // is called we're ready to go with a new engagement...
+        engagement = null
+        engagementStarted = false
+        engagementComplete = false
+        numApdusReceived = 0
+
     }
 }

@@ -39,16 +39,12 @@ import org.multipaz.openid.dcql.DcqlQuery
 import org.multipaz.openid.dcql.DcqlResponseCredentialSetOptionMemberMatch
 import org.multipaz.presentment.model.PresentmentCanceled
 import org.multipaz.presentment.model.PresentmentSource
-import org.multipaz.presentment.model.findTrustPoint
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.Requester
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.presentment.PresentmentUnlockReason
-import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
@@ -261,7 +257,6 @@ object OpenID4VP {
      *   example an OS-provided credential picker like Android's Credential Manager) or the empty list
      *   if the user didn't preselect.
      * @param source an object for application to provide data and policy.
-     * @param showConsentPrompt a function to ask the user for consent.
      * @property appId if this is a request from a local application, this contains the app identifier
      *   for example `com.example.app` on Android or `<teamId>.<bundleId>` on iOS.
      * @param origin the origin of the requester or `null` if not known.
@@ -276,12 +271,6 @@ object OpenID4VP {
         version: Version,
         preselectedDocuments: List<Document>,
         source: PresentmentSource,
-        showConsentPrompt: suspend (
-            credentialPresentmentData: CredentialPresentmentData,
-            preselectedDocuments: List<Document>,
-            requester: Requester,
-            trustPoint: TrustPoint?
-        ) -> CredentialPresentmentSelection?,
         appId: String?,
         origin: String?,
         request: JsonObject,
@@ -403,18 +392,14 @@ object OpenID4VP {
             appId = appId,
             origin = origin
         )
-        val trustPoint = source.findTrustPoint(requester)
 
-        val selection = if (source.skipConsentPrompt) {
-            dcqlResponse.select(preselectedDocuments)
-        } else {
-            showConsentPrompt(
-                dcqlResponse,
-                preselectedDocuments,
-                requester,
-                trustPoint
-            )
-        }
+        val selection = source.showConsentPrompt(
+            requester,
+            source.resolveTrust(requester),
+            dcqlResponse,
+            preselectedDocuments,
+            { selection -> },
+        )
         if (selection == null) {
             throw PresentmentCanceled("User canceled at document selection time")
         }

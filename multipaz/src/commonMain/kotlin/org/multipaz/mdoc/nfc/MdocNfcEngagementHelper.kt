@@ -32,7 +32,9 @@ import org.multipaz.util.getUInt16
  *
  * This implements NFC engagement according to ISO/IEC 18013-5:2021.
  *
- * APDUs received from the NFC tag reader should be passed to the [processApdu] method.
+ * APDUs received from the NFC tag reader should be passed to the [processApdu] method and deactivation
+ * events to [processDeactivated]. Once handover is deemed to be complete or an error is detected, either
+ * [onHandoverComplete] or [onError] is called.
  *
  * @param eDeviceKey EDeviceKey as per ISO/IEC 18013-5:2021.
  * @param onHandoverComplete the function to call when handover is complete.
@@ -84,11 +86,24 @@ class MdocNfcEngagementHelper(
     private var selectedFileId: Int = 0
     private var selectedFilePayload: ByteString = ByteString()
     private var ndefApplicationSelected = false
-    private var inError = false
+    private var raisedError = false
+    private var raisedHandoverComplete = false
 
     private fun raiseError(errorMessage: String, cause: Throwable? = null) {
-        inError = true
+        check(!raisedError && !raisedHandoverComplete)
+        raisedError = true
         onError(Error(errorMessage, cause))
+    }
+
+    private fun raiseHandoverComplete(
+        connectionMethods: List<MdocConnectionMethod>,
+        encodedDeviceEngagement: ByteString,
+
+        handover: DataItem
+    ) {
+        check(!raisedError && !raisedHandoverComplete)
+        raisedHandoverComplete = true
+        onHandoverComplete(connectionMethods, encodedDeviceEngagement, handover)
     }
 
     private suspend fun processSelectApplication(command: CommandApdu): ResponseApdu {
@@ -171,7 +186,7 @@ class MdocNfcEngagementHelper(
                     bsb.append(hsPayload.size.and(0xff).toByte())
                     bsb.append(hsPayload)
 
-                    onHandoverComplete(
+                    raiseHandoverComplete(
                         staticHandoverMethods!!,
                         ByteString(encodedDeviceEngagement),
                         handover
@@ -273,7 +288,7 @@ class MdocNfcEngagementHelper(
 
         negotiatedHandoverState = NegotiatedHandoverState.EXPECT_HANDOVER_SELECT_MESSAGE
 
-        onHandoverComplete(
+        raiseHandoverComplete(
             listOf(selectedMethod),
             ByteString(encodedDeviceEngagement),
             handover
@@ -407,7 +422,7 @@ class MdocNfcEngagementHelper(
      * @return the response.
      */
     suspend fun processApdu(command: CommandApdu): ResponseApdu {
-        if (inError) {
+        if (raisedError) {
             Logger.w(TAG, "processApdu: Already in error state, responding to APDU with status 6f00")
             return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS)
         }
@@ -427,6 +442,19 @@ class MdocNfcEngagementHelper(
         } catch (error: Throwable) {
             raiseError("Error processing APDU: ${error.message}", error)
             return ResponseApdu(Nfc.RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS)
+        }
+    }
+
+    /**
+     * Process a deactivation event.
+     *
+     * @param reason the reason.
+     */
+    suspend fun processDeactivated(reason: Int) {
+        if (raisedHandoverComplete || raisedError) {
+            return
+        } else {
+            raiseError("processDeactivated: deactivated with reason $reason")
         }
     }
 }

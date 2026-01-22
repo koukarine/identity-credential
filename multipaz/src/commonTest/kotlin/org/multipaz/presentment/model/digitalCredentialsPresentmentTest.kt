@@ -28,6 +28,7 @@ import org.multipaz.mdoc.response.DeviceResponse
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.openid.OpenID4VP
 import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.prompt.promptModelSilentConsent
 import org.multipaz.request.Requester
 import org.multipaz.sdjwt.SdJwtKb
 import org.multipaz.storage.ephemeral.EphemeralStorage
@@ -61,28 +62,6 @@ class DigitalCredentialsPresentmentTest {
         documentStoreTestHarness.provisionStandardDocuments()
     }
 
-    class TestPresentmentMechanism(
-        protocol: String,
-        data: JsonObject,
-        documents: List<Document>,
-        var response: String? = null,
-        var closed: Boolean = false
-    ): DigitalCredentialsPresentmentMechanism(
-        appId = APP_ID,
-        origin = ORIGIN,
-        protocol = protocol,
-        data = data,
-        preselectedDocuments = documents,
-    ) {
-        override fun sendResponse(protocol: String, data: JsonObject) {
-            this.response = Json.encodeToString(data)
-        }
-
-        override fun close() {
-            closed = true
-        }
-    }
-
     private data class ShownConsentPrompt(
         val credentialPresentmentData: CredentialPresentmentData,
         val preselectedDocuments: List<Document>,
@@ -104,11 +83,10 @@ class DigitalCredentialsPresentmentTest {
         encryptionKey: EcPrivateKey?,
         dcql: JsonObject
     ): TestOpenID4VPResponse {
-        val readerTrustManager = TrustManagerLocal(EphemeralStorage())
         val presentmentSource = SimplePresentmentSource(
             documentStore = documentStoreTestHarness.documentStore,
             documentTypeRepository = documentStoreTestHarness.documentTypeRepository,
-            readerTrustManager = readerTrustManager,
+            showConsentPromptFn = ::promptModelSilentConsent,
             preferSignatureToKeyAgreement = true,
             domainMdocSignature = "mdoc",
             domainKeyBoundSdJwt = "sdjwt",
@@ -157,28 +135,20 @@ class DigitalCredentialsPresentmentTest {
                 }
             }
         }
-        val presentmentMechanism = TestPresentmentMechanism(
-            protocol = protocol,
-            data = request,
-            documents = emptyList(),
-        )
 
         val shownConsentPrompts = mutableListOf<ShownConsentPrompt>()
 
         val dismissable = MutableStateFlow<Boolean>(true)
-        digitalCredentialsPresentment(
-            documentTypeRepository = documentStoreTestHarness.documentTypeRepository,
+        val dcResponseObject = digitalCredentialsPresentment(
+            protocol = protocol,
+            data = request,
+            appId = APP_ID,
+            origin = ORIGIN,
+            preselectedDocuments = emptyList(),
             source = presentmentSource,
-            mechanism = presentmentMechanism,
-            dismissable = dismissable,
-            showConsentPrompt = { presentmentData, preselectedDocuments, requester, trustPoint ->
-                shownConsentPrompts.add(ShownConsentPrompt(presentmentData, preselectedDocuments, requester, trustPoint))
-                presentmentData.select(preselectedDocuments)
-            }
         )
-        val dcResponseObject = Json.decodeFromString(JsonObject.serializer(), presentmentMechanism.response!!)
         val decryptedDcResponse = if (encryptionKey != null) {
-            val jweCompactSerialization = dcResponseObject["response"]!!.jsonPrimitive.content
+            val jweCompactSerialization = dcResponseObject["data"]!!.jsonObject["response"]!!.jsonPrimitive.content
             if (version == OpenID4VP.Version.DRAFT_29) {
                 // From Section 8.3: If the selected public key contains a kid parameter, the JWE MUST
                 // include the same value in the kid JWE Header Parameter (as defined in Section 4.1.6)
@@ -201,7 +171,7 @@ class DigitalCredentialsPresentmentTest {
                 )
             )
         } else {
-            dcResponseObject
+            dcResponseObject["data"]!!.jsonObject
         }
 
         // In OpenID4VP 1.0 this is a response of the form.

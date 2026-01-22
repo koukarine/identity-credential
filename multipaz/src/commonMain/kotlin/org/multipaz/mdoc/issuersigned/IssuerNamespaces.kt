@@ -217,7 +217,7 @@ data class IssuerNamespaces(
  * @param builderAction the builder action.
  * @return the built [IssuerNamespaces].
  */
-fun buildIssuerNamespaces(
+inline fun buildIssuerNamespaces(
     dataElementRandomSize: Int = 16,
     randomProvider: Random = Random,
     builderAction: IssuerNamespaces.Builder.() -> Unit

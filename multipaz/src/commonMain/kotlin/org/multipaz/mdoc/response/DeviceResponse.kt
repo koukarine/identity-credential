@@ -324,6 +324,27 @@ data class DeviceResponse internal constructor(
         }
 
         /**
+         * Add encrypted documents to a [DeviceResponse] being built.
+         *
+         * @param encryptionParameters the parameters to use including the recipient key.
+         * @param docRequestId the document request ID.
+         * @param builderAction the builder action.
+         */
+        suspend fun addEncryptedDocuments(
+            encryptionParameters: EncryptionParameters,
+            docRequestId: Int,
+            builderAction: suspend EncryptedDocuments.Builder.() -> Unit
+        ) {
+            val builder = EncryptedDocuments.Builder(
+                sessionTranscript = sessionTranscript,
+                encryptionParameters = encryptionParameters,
+                docRequestId = docRequestId
+            )
+            builder.builderAction()
+            addEncryptedDocuments(builder.build())
+        }
+
+        /**
          * Adds errors to the response.
          *
          * @param documentError A map from docType to error codes.
@@ -370,12 +391,12 @@ data class DeviceResponse internal constructor(
  * @param builderAction the builder action.
  * @return a [DeviceResponse].
  */
-suspend fun buildDeviceResponse(
+inline fun buildDeviceResponse(
     sessionTranscript: DataItem,
     status: Int,
     eReaderKey: EcPublicKey? = null,
     version: String? = null,
-    builderAction: suspend DeviceResponse.Builder.() -> Unit
+    builderAction: DeviceResponse.Builder.() -> Unit
 ): DeviceResponse {
     val builder = DeviceResponse.Builder(
         sessionTranscript = sessionTranscript,
@@ -385,25 +406,4 @@ suspend fun buildDeviceResponse(
     )
     builder.builderAction()
     return builder.build()
-}
-
-/**
- * Add encrypted documents to a [DeviceResponse] being built.
- *
- * @param encryptionParameters the parameters to use including the recipient key.
- * @param docRequestId the document request ID.
- * @param builderAction the builder action.
- */
-suspend fun DeviceResponse.Builder.addEncryptedDocuments(
-    encryptionParameters: EncryptionParameters,
-    docRequestId: Int,
-    builderAction: suspend EncryptedDocuments.Builder.() -> Unit
-) {
-    val builder = EncryptedDocuments.Builder(
-        sessionTranscript = sessionTranscript,
-        encryptionParameters = encryptionParameters,
-        docRequestId = docRequestId
-    )
-    builder.builderAction()
-    addEncryptedDocuments(builder.build())
 }

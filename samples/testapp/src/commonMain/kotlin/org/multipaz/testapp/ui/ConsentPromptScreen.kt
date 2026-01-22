@@ -1,11 +1,13 @@
 package org.multipaz.testapp.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,8 +17,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import coil3.ImageLoader
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
@@ -31,14 +33,15 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import multipazproject.samples.testapp.generated.resources.Res
-import org.jetbrains.compose.resources.painterResource
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.asn1.OID
+import org.multipaz.cbor.toDataItem
+import org.multipaz.cbor.toDataItemDateTimeString
 import org.multipaz.certext.GoogleAccount
 import org.multipaz.certext.MultipazExtension
 import org.multipaz.certext.fromCbor
 import org.multipaz.certext.toCbor
-import org.multipaz.compose.presentment.ConsentModalBottomSheet
+import org.multipaz.compose.document.DocumentModel
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -49,14 +52,22 @@ import org.multipaz.crypto.X509Extension
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.document.buildDocumentStore
+import org.multipaz.documenttype.DocumentAttributeType
 import org.multipaz.documenttype.DocumentCannedRequest
+import org.multipaz.documenttype.DocumentType
 import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.documenttype.Icon
 import org.multipaz.documenttype.knowntypes.DrivingLicense
 import org.multipaz.documenttype.knowntypes.PhotoID
 import org.multipaz.mdoc.util.MdocUtil
 import org.multipaz.openid.dcql.DcqlQuery
 import org.multipaz.openid.dcql.DcqlResponse
+import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.model.PresentmentSource
 import org.multipaz.presentment.model.SimplePresentmentSource
+import org.multipaz.prompt.PromptModel
+import org.multipaz.prompt.requestConsent
 import org.multipaz.request.Requester
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
@@ -66,16 +77,15 @@ import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
-import org.multipaz.testapp.TestAppConfiguration
-import org.multipaz.trustmanagement.TrustManagerLocal
 import org.multipaz.trustmanagement.TrustMetadata
-import org.multipaz.trustmanagement.TrustPoint
 import org.multipaz.util.truncateToWholeSeconds
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.iterator
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 private enum class CertChain(
@@ -116,40 +126,152 @@ private enum class UseCase(
     MDL_NAME_AND_ADDRESS_PARTIALLY_STORED("mDL: Name and address (partially stored)"),
     MDL_NAME_AND_ADDRESS_ALL_STORED("mDL: Name and address (all stored)"),
     PHOTO_ID_MANDATORY("PhotoID: Mandatory data elements (2 docs)"),
-    OPENID4VP_COMPLEX_EXAMPLE("Complex example from OpenID4VP Appendix D")
+    OPENID4VP_COMPLEX_EXAMPLE("Complex example from OpenID4VP Appendix D"),
+    BOARDING_PASS_AND_MDL_EXAMPLE("Boarding pass and mDL")
 }
+
+private enum class PaDuration(
+    val desc: String,
+    val duration: Duration
+) {
+    PA_DURATION_NONE("None", 0.seconds),
+    PA_DURATION_2SEC("2 sec", 2.seconds),
+    PA_DURATION_5SEC("5 sec", 5.seconds),
+    PA_DURATION_30SEC("30 sec", 30.seconds)
+}
+
+private enum class PaPreselectedDocuments(
+    val desc: String
+) {
+    PRESELECTED_DOCUMENTS_NONE("None"),
+    PRESELECTED_DOCUMENTS_MDL("mDL"),
+    PRESELECTED_DOCUMENTS_PHOTOID("PhotoID"),
+    PRESELECTED_DOCUMENTS_MDL_AND_PHOTOID("mDL and PhotoID"),
+    PRESELECTED_DOCUMENTS_MDL_AND_PHOTOID_AND_PHOTOID("mDL and PhotoID and PhotoID"),
+    PRESELECTED_DOCUMENTS_MDL_AND_BOARDING_PASS("mDL and boarding pass")
+}
+
+data class AndroidPresentmentActivityData(
+    val showConsent: Boolean = true,
+    val requireAuth: Boolean = true,
+    val authRequireConfirmation: Boolean = false,
+    val connectionDuration: Duration = 0.seconds,
+    val sendResponseDuration: Duration = 0.seconds,
+    val preselectedDocuments: List<Document> = emptyList()
+)
+
+private object UtopiaBoardingPass {
+    const val BOARDING_PASS_DOCTYPE = "org.multipaz.example.boarding-pass.1"
+    const val BOARDING_PASS_NS = "org.multipaz.example.boarding-pass.1"
+
+    /**
+     * Build the Movie Ticket Document Type.
+     */
+    fun getDocumentType(): DocumentType {
+        return DocumentType.Builder("Boarding Pass").apply {
+            addMdocDocumentType(BOARDING_PASS_DOCTYPE)
+            addMdocAttribute(
+                DocumentAttributeType.String,
+                "passenger_name",
+                "Passenger name",
+                "Last name, surname, or primary identifier, of the mDL holder.",
+                true,
+                BOARDING_PASS_NS,
+                Icon.PERSON,
+                "Erika Mustermann".toDataItem()
+            )
+            addMdocAttribute(
+                DocumentAttributeType.String,
+                "flight_number",
+                "Flight number",
+                "The flight number",
+                true,
+                BOARDING_PASS_NS,
+                Icon.AIRPORT_SHUTTLE,
+                "United 815".toDataItem()
+            )
+            addMdocAttribute(
+                DocumentAttributeType.String,
+                "seat_number",
+                "Seat number",
+                "The seat number",
+                true,
+                BOARDING_PASS_NS,
+                Icon.DIRECTIONS,
+                "12A".toDataItem()
+            )
+            addMdocAttribute(
+                DocumentAttributeType.DateTime,
+                "departure_time",
+                "Departure time",
+                "The date of time of departure",
+                true,
+                BOARDING_PASS_NS,
+                Icon.TODAY,
+                Clock.System.now().toDataItemDateTimeString()
+            )
+        }.build()
+    }
+}
+
+
+expect suspend fun launchAndroidPresentmentActivity(
+    source: PresentmentSource,
+    paData: AndroidPresentmentActivityData,
+    requester: Requester,
+    trustMetadata: TrustMetadata?,
+    credentialPresentmentData: CredentialPresentmentData,
+    preselectedDocuments: List<Document>,
+    onDocumentsInFocus: (documents: List<Document>) -> Unit
+): CredentialPresentmentSelection?
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConsentPromptScreen(
-    imageLoader: ImageLoader,
-    documentTypeRepository: DocumentTypeRepository,
     secureAreaRepository: SecureAreaRepository,
+    promptModel: PromptModel,
     showToast: (message: String) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var useCase by remember { mutableStateOf(UseCase.entries.first()) }
+    var useCase by remember { mutableStateOf(UseCase.MDL_US_TRANSPORTATION) }
     var certChain by remember { mutableStateOf(CertChain.entries.first()) }
     var origin by remember { mutableStateOf(Origin.entries.first()) }
     var appId by remember { mutableStateOf(AppId.entries.first()) }
-    var showCancelAsBack by remember { mutableStateOf(false) }
-    val queryResult = remember { mutableStateOf<QueryResult?>(null) }
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
-    )
-
-    var cardArt by remember { mutableStateOf(ByteArray(0)) }
+    var cardArtMdl by remember { mutableStateOf(ByteArray(0)) }
+    var cardArtPhotoId by remember { mutableStateOf(ByteArray(0)) }
+    var cardArtBoardingPass by remember { mutableStateOf(ByteArray(0)) }
     var utopiaBreweryIcon by remember { mutableStateOf(ByteString()) }
     var identityReaderIcon by remember { mutableStateOf(ByteString()) }
     var documentStore by remember { mutableStateOf<DocumentStore?>(null) }
+    var onDocumentsInFocus by remember { mutableStateOf<List<Document>?>(null) }
+    var documentModel by remember { mutableStateOf<DocumentModel?>(null) }
+    var paShowConsent by remember { mutableStateOf(true) }
+    var paRequireAuth by remember { mutableStateOf(true) }
+    var paAuthRequireConfirmation by remember { mutableStateOf(false) }
+    var paConnectionDuration by remember { mutableStateOf(PaDuration.PA_DURATION_2SEC) }
+    var paSendingDuration by remember { mutableStateOf(PaDuration.PA_DURATION_2SEC) }
+    var paPreselectedDocuments by remember { mutableStateOf(PaPreselectedDocuments.PRESELECTED_DOCUMENTS_MDL)}
+    lateinit var documentTypeRepository: DocumentTypeRepository
+    lateinit var documentMdl: Document
+    lateinit var documentPhotoId: Document
+    lateinit var documentPhotoId2: Document
+    lateinit var documentBoardingPass: Document
+
     LaunchedEffect(Unit) {
-        cardArt = Res.readBytes("files/utopia_driving_license_card_art.png")
+        cardArtMdl = Res.readBytes("files/utopia_driving_license_card_art.png")
+        cardArtPhotoId = Res.readBytes("drawable/photo_id_card_art.png")
+        cardArtBoardingPass = Res.readBytes("files/boarding-pass-utopia-airlines.png")
         utopiaBreweryIcon = ByteString(Res.readBytes("files/utopia-brewery.png"))
         identityReaderIcon = ByteString(Res.readBytes("drawable/app_icon.webp"))
 
         val storage = EphemeralStorage()
         val secureArea = SoftwareSecureArea.create(storage)
+        documentTypeRepository = DocumentTypeRepository()
+        documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
+        documentTypeRepository.addDocumentType(PhotoID.getDocumentType())
+        documentTypeRepository.addDocumentType(UtopiaBoardingPass.getDocumentType())
         documentStore = buildDocumentStore(storage, secureAreaRepository) {}
+        documentModel = DocumentModel(documentStore = documentStore!!, documentTypeRepository = documentTypeRepository)
 
         val now = Clock.System.now().truncateToWholeSeconds()
         val iacaCertValidFrom = now - 1.days
@@ -186,12 +308,13 @@ fun ConsentPromptScreen(
         val credsValidFrom = now - 0.5.days
         val credsValidUntil = dsCertValidFrom + 30.days
 
+        documentMdl = documentStore!!.createDocument(
+            displayName = "Erika's driving license",
+            typeDisplayName = "Utopia driving dicense",
+            cardArt = ByteString(cardArtMdl)
+        )
         DrivingLicense.getDocumentType().createMdocCredentialWithSampleData(
-            document = documentStore!!.createDocument(
-                displayName = "Erika's Driving License",
-                typeDisplayName = "Utopia Driving License",
-                cardArt = ByteString(cardArt)
-            ),
+            document = documentMdl,
             secureArea = secureArea,
             createKeySettings = CreateKeySettings(),
             dsKey = dsKey,
@@ -201,12 +324,13 @@ fun ConsentPromptScreen(
             expectedUpdate = null,
             domain = "mdoc"
         )
+        documentPhotoId = documentStore!!.createDocument(
+            displayName = "Erika's PhotoID",
+            typeDisplayName = "Utopia PhotoID",
+            cardArt = ByteString(cardArtPhotoId)
+        )
         PhotoID.getDocumentType().createMdocCredentialWithSampleData(
-            document = documentStore!!.createDocument(
-                displayName = "Erika's Photo ID",
-                typeDisplayName = "Utopia Photo ID",
-                cardArt = ByteString(cardArt)
-            ),
+            document = documentPhotoId,
             secureArea = secureArea,
             createKeySettings = CreateKeySettings(),
             dsKey = dsKey,
@@ -216,12 +340,29 @@ fun ConsentPromptScreen(
             expectedUpdate = null,
             domain = "mdoc"
         )
+        documentPhotoId2 = documentStore!!.createDocument(
+            displayName = "Erika's PhotoID #2",
+            typeDisplayName = "Utopia PhotoID",
+            cardArt = ByteString(cardArtPhotoId)
+        )
         PhotoID.getDocumentType().createMdocCredentialWithSampleData(
-            document = documentStore!!.createDocument(
-                displayName = "Erika's Photo ID #2",
-                typeDisplayName = "Utopia Photo ID",
-                cardArt = ByteString(cardArt)
-            ),
+            document = documentPhotoId2,
+            secureArea = secureArea,
+            createKeySettings = CreateKeySettings(),
+            dsKey = dsKey,
+            signedAt = credsValidFrom,
+            validFrom = credsValidFrom,
+            validUntil = credsValidUntil,
+            expectedUpdate = null,
+            domain = "mdoc"
+        )
+        documentBoardingPass = documentStore!!.createDocument(
+            displayName = "Utopia 815 BOS to SFO",
+            typeDisplayName = "Utopia Airlines boarding pass",
+            cardArt = ByteString(cardArtBoardingPass)
+        )
+        UtopiaBoardingPass.getDocumentType().createMdocCredentialWithSampleData(
+            document = documentBoardingPass,
             secureArea = secureArea,
             createKeySettings = CreateKeySettings(),
             dsKey = dsKey,
@@ -281,87 +422,185 @@ fun ConsentPromptScreen(
             )
         }
 
-        item {
-            SettingToggle(
-                title = "Show Cancel as Back",
-                isChecked = showCancelAsBack,
-                onCheckedChange = { showCancelAsBack = it },
-            )
+        fun launchConsent(launcher: suspend (
+                source: PresentmentSource,
+                paData: AndroidPresentmentActivityData,
+                requester: Requester,
+                trustMetadata: TrustMetadata?,
+                credentialPresentmentData: CredentialPresentmentData,
+                preselectedDocuments: List<Document>,
+                onDocumentsInFocus: (documents: List<Document>) -> Unit
+            ) -> CredentialPresentmentSelection?,
+                          paData: AndroidPresentmentActivityData,
+        ) {
+            coroutineScope.launch {
+                try {
+                    val queryResult = getQueryResult(
+                        useCase = useCase,
+                        certChain = certChain,
+                        origin = origin,
+                        appId = appId,
+                        utopiaBreweryIcon = utopiaBreweryIcon,
+                        identityReaderIcon = identityReaderIcon,
+                        documentStore = documentStore,
+                        documentTypeRepository = documentTypeRepository
+                    )
+                    launcher(
+                        queryResult.source,
+                        paData,
+                        queryResult.requester,
+                        queryResult.source.resolveTrust(queryResult.requester),
+                        queryResult.dcqlResponse,
+                        emptyList(),
+                        { documents ->
+                            onDocumentsInFocus = documents
+                        },
+                    )
+                } catch (e: Throwable) {
+                    e.printStackTrace()
+                    showToast("Error evaluating query: $e")
+                } finally {
+                    onDocumentsInFocus = null
+                }
+            }
         }
 
         item {
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        try {
-                            queryResult.value = getQueryResult(
-                                useCase = useCase,
-                                certChain = certChain,
-                                origin = origin,
-                                appId = appId,
-                                utopiaBreweryIcon = utopiaBreweryIcon,
-                                identityReaderIcon = identityReaderIcon,
-                                documentStore = documentStore,
-                                documentTypeRepository = documentTypeRepository
-                            )
-                            sheetState.show()
-                        } catch (e: Throwable) {
-                            e.printStackTrace()
-                            showToast("Error evaluating query: $e")
-                        }
-                    }
-                }
-            ) {
+            Button(onClick = {
+                launchConsent(launcher = { source, paData,
+                                           requester, trustMetadata, credentialPresentmentData, preselectedDocuments, onDocumentsInFocus ->
+                        promptModel.requestConsent(
+                            requester = requester,
+                            trustMetadata = trustMetadata,
+                            credentialPresentmentData = credentialPresentmentData,
+                            preselectedDocuments = preselectedDocuments,
+                            onDocumentsInFocus = onDocumentsInFocus,
+                        )
+                    },
+                    paData = AndroidPresentmentActivityData()
+                )}) {
                 Text("Show Consent Prompt")
             }
         }
-    }
 
-    if (sheetState.isVisible) {
-        queryResult.value?.let {
-            ConsentModalBottomSheet(
-                sheetState = sheetState,
-                requester = it.requester,
-                trustPoint = it.trustPoint,
-                credentialPresentmentData = it.dcqlResponse,
-                preselectedDocuments = emptyList(),
-                imageLoader = imageLoader,
-                dynamicMetadataResolver = { requester ->
-                    requester.certChain?.certificates?.first()
-                        ?.getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)?.let {
-                            MultipazExtension.fromCbor(it).googleAccount?.let {
-                                TrustMetadata(
-                                    displayName = it.emailAddress,
-                                    displayIconUrl = it.profilePictureUri,
-                                    disclaimer = "The email and picture shown are from the requester's Google Account. " +
-                                            "This information has been verified but may not be their real identity"
-                                )
-                            }
-                        }
-                },
-                appName = TestAppConfiguration.appName,
-                appIconPainter = painterResource(TestAppConfiguration.appIcon),
-                onConfirm = { selection ->
-                    coroutineScope.launch {
-                        sheetState.hide()
-                        queryResult.value = null
+        // Draw currently selected documents from consent prompt.
+        //
+        if (onDocumentsInFocus != null) {
+            onDocumentsInFocus?.forEach {
+                documentModel?.documentInfos?.value?.get(it.identifier)?.let { documentInfo ->
+                    item {
+                        Image(
+                            modifier = Modifier.size(100.dp),
+                            bitmap = documentInfo.cardArt,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit
+                        )
                     }
-                },
-                onCancel = {
-                    coroutineScope.launch {
-                        sheetState.hide()
-                        queryResult.value = null
+                    item {
+                        Text("Document: ${documentInfo.document.displayName}")
                     }
-                },
-                showCancelAsBack = showCancelAsBack
+                }
+            }
+        }
+
+        item {
+            HorizontalDivider()
+        }
+
+        item {
+            Text(
+                "The following simulates the consent prompt with the settings from above " +
+                        "in PresentmentActivity which is used for proximity presentment using QR and NFC on Android"
             )
+        }
+
+        item {
+            SettingToggle(
+                title = "Show consent prompt",
+                isChecked = paShowConsent,
+                onCheckedChange = { newValue ->
+                    paShowConsent = newValue
+                }
+            )
+        }
+
+        item {
+            SettingToggle(
+                title = "Require authentication",
+                isChecked = paRequireAuth,
+                onCheckedChange = { newValue ->
+                    paRequireAuth = newValue
+                }
+            )
+        }
+
+        item {
+            SettingToggle(
+                title = "Require confirmation for auth",
+                isChecked = paAuthRequireConfirmation,
+                onCheckedChange = { newValue ->
+                    paAuthRequireConfirmation = newValue
+                }
+            )
+        }
+
+        item {
+            SettingMultipleChoice(
+                title = "Connection time",
+                choices = PaDuration.entries.map { it.desc },
+                initialChoice = paConnectionDuration.desc,
+                onChoiceSelected = { choice -> paConnectionDuration = PaDuration.entries.find { it.desc == choice }!! },
+            )
+        }
+
+        item {
+            SettingMultipleChoice(
+                title = "Time to send response",
+                choices = PaDuration.entries.map { it.desc },
+                initialChoice = paSendingDuration.desc,
+                onChoiceSelected = { choice -> paSendingDuration = PaDuration.entries.find { it.desc == choice }!! },
+            )
+        }
+
+        item {
+            SettingMultipleChoice(
+                title = "Preselected documents",
+                choices = PaPreselectedDocuments.entries.map { it.desc },
+                initialChoice = paPreselectedDocuments.desc,
+                onChoiceSelected = { choice -> paPreselectedDocuments = PaPreselectedDocuments.entries.find { it.desc == choice }!! },
+            )
+        }
+
+        item {
+            Button(onClick = { launchConsent(
+                launcher = ::launchAndroidPresentmentActivity,
+                paData = AndroidPresentmentActivityData(
+                    showConsent = paShowConsent,
+                    requireAuth = paRequireAuth,
+                    authRequireConfirmation = paAuthRequireConfirmation,
+                    connectionDuration = paConnectionDuration.duration,
+                    sendResponseDuration = paSendingDuration.duration,
+                    preselectedDocuments = when (paPreselectedDocuments) {
+                        PaPreselectedDocuments.PRESELECTED_DOCUMENTS_NONE -> listOf()
+                        PaPreselectedDocuments.PRESELECTED_DOCUMENTS_MDL -> listOf(documentMdl)
+                        PaPreselectedDocuments.PRESELECTED_DOCUMENTS_PHOTOID -> listOf(documentPhotoId)
+                        PaPreselectedDocuments.PRESELECTED_DOCUMENTS_MDL_AND_PHOTOID -> listOf(documentMdl, documentPhotoId)
+                        PaPreselectedDocuments.PRESELECTED_DOCUMENTS_MDL_AND_PHOTOID_AND_PHOTOID ->
+                            listOf(documentMdl, documentPhotoId, documentPhotoId2)
+                        PaPreselectedDocuments.PRESELECTED_DOCUMENTS_MDL_AND_BOARDING_PASS ->
+                            listOf(documentMdl, documentBoardingPass)
+                    }
+                ),
+            ) }) {
+                Text("Show in PresentmentActivity")
+            }
         }
     }
 }
 
 private data class QueryResult(
     val requester: Requester,
-    val trustPoint: TrustPoint?,
+    val source: PresentmentSource,
     val dcqlResponse: DcqlResponse
 )
 
@@ -470,27 +709,82 @@ private suspend fun getQueryResult(
             }
             """.trimIndent()
         ).jsonObject
+        UseCase.BOARDING_PASS_AND_MDL_EXAMPLE -> Json.parseToJsonElement(
+            """
+            {
+              "credentials": [
+                {
+                  "id": "mdl",
+                  "format": "mso_mdoc",
+                  "meta": {
+                    "doctype_value": "org.iso.18013.5.1.mDL"
+                  },
+                  "claims": [
+                    { "path": ["org.iso.18013.5.1", "family_name" ] },
+                    { "path": ["org.iso.18013.5.1", "given_name" ] },
+                    { "path": ["org.iso.18013.5.1", "birth_date" ] },
+                    { "path": ["org.iso.18013.5.1", "issue_date" ] },
+                    { "path": ["org.iso.18013.5.1", "expiry_date" ] },
+                    { "path": ["org.iso.18013.5.1", "issuing_country" ] },
+                    { "path": ["org.iso.18013.5.1", "issuing_authority" ] },
+                    { "path": ["org.iso.18013.5.1", "document_number" ] },
+                    { "path": ["org.iso.18013.5.1", "portrait" ] },
+                    { "path": ["org.iso.18013.5.1", "driving_privileges" ] },
+                    { "path": ["org.iso.18013.5.1", "un_distinguishing_sign" ] }
+                  ]
+                },
+                {
+                  "id": "boarding-pass",
+                  "format": "mso_mdoc",
+                  "meta": {
+                    "doctype_value": "org.multipaz.example.boarding-pass.1"
+                  },
+                  "claims": [
+                    { "path": ["org.multipaz.example.boarding-pass.1", "passenger_name" ] },
+                    { "path": ["org.multipaz.example.boarding-pass.1", "seat_number" ] },
+                    { "path": ["org.multipaz.example.boarding-pass.1", "flight_number" ] },
+                    { "path": ["org.multipaz.example.boarding-pass.1", "departure_time" ] }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent()
+        ).jsonObject
     }
-    val (requester, trustPoint) = calculateRequester(
+    val (requester, trustMetadata) = calculateRequester(
         certChain = certChain,
         origin = origin,
         appId = appId,
         utopiaBreweryIcon = utopiaBreweryIcon,
         identityReaderIcon = identityReaderIcon
     )
-    val readerTrustManager = TrustManagerLocal(
-        storage = EphemeralStorage()
-    )
-    val presentmentSource = SimplePresentmentSource(
+    val source = SimplePresentmentSource(
         documentStore = documentStore!!,
         documentTypeRepository = documentTypeRepository,
-        readerTrustManager = readerTrustManager,
+        resolveTrustFn = { requester ->
+            // If available, use dynamic metadata...
+            val readerCert = requester.certChain?.certificates?.first()
+            val mpzExtensionData = readerCert?.getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)
+            if (mpzExtensionData != null) {
+                val mpzExtension = MultipazExtension.fromCbor(mpzExtensionData)
+                mpzExtension.googleAccount?.let {
+                    return@SimplePresentmentSource TrustMetadata(
+                        displayName = it.emailAddress,
+                        displayIconUrl = it.profilePictureUri,
+                        disclaimer = "The email and picture shown are from the requester's Google Account. " +
+                                "This information has been verified but may not be their real identity"
+                    )
+                }
+            }
+            // Otherwise, just return the trustMetadata
+            trustMetadata
+        },
         domainMdocSignature = "mdoc",
         domainKeyBoundSdJwt = "sdjwt"
     )
     val dcqlQuery = DcqlQuery.fromJson(dcql = dcql)
-    val dcqlResponse = dcqlQuery.execute(presentmentSource = presentmentSource)
-    return QueryResult(requester, trustPoint, dcqlResponse)
+    val dcqlResponse = dcqlQuery.execute(presentmentSource = source)
+    return QueryResult(requester, source, dcqlResponse)
 }
 
 private suspend fun calculateRequester(
@@ -499,7 +793,7 @@ private suspend fun calculateRequester(
     appId: AppId,
     utopiaBreweryIcon: ByteString,
     identityReaderIcon: ByteString
-): Pair<Requester, TrustPoint?> {
+): Pair<Requester, TrustMetadata?> {
     val now = Clock.System.now().truncateToWholeSeconds()
     val validFrom = now - 1.days
     val validUntil = now + 1.days
@@ -547,62 +841,44 @@ private suspend fun calculateRequester(
         ))
     )
 
-
-    val trustManager = TrustManagerLocal(storage = EphemeralStorage())
-    val (trustPoint, readerCert) = when (certChain) {
+    val (trustMetadata, readerCert) = when (certChain) {
         CertChain.CERT_CHAIN_UTOPIA_BREWERY -> {
             Pair(
-                TrustPoint(
-                certificate = readerRootCert,
-                metadata = TrustMetadata(
+                TrustMetadata(
                     displayName = "Utopia Brewery",
                     displayIcon = utopiaBreweryIcon,
                     privacyPolicyUrl = "https://apps.multipaz.org",
                 ),
-                trustManager = trustManager
-            ),
                 readerCertWithoutGoogleAccount
             )
         }
         CertChain.CERT_CHAIN_UTOPIA_BREWERY_NO_PRIVACY_POLICY -> {
             Pair(
-            TrustPoint(
-                certificate = readerRootCert,
-                metadata = TrustMetadata(
+            TrustMetadata(
                     displayName = "Utopia Brewery",
                     displayIcon = utopiaBreweryIcon,
                     privacyPolicyUrl = null,
                 ),
-                trustManager = trustManager
-            ),
                 readerCertWithoutGoogleAccount
             )
         }
         CertChain.CERT_CHAIN_IDENTITY_READER ->  {
             Pair(
-            TrustPoint(
-                certificate = readerRootCert,
-                metadata = TrustMetadata(
+            TrustMetadata(
                     displayName = "Multipaz Identity Reader",
                     displayIcon = identityReaderIcon,
                     privacyPolicyUrl = "https://apps.multipaz.org",
                 ),
-                trustManager = trustManager
-            ),
                 readerCertWithoutGoogleAccount
             )
         }
         CertChain.CERT_CHAIN_IDENTITY_READER_GOOGLE_ACCOUNT -> {
             Pair(
-            TrustPoint(
-                certificate = readerRootCert,
-                metadata = TrustMetadata(
+            TrustMetadata(
                     displayName = "Multipaz Identity Reader",
                     displayIcon = identityReaderIcon,
                     privacyPolicyUrl = "https://apps.multipaz.org",
                 ),
-                trustManager = trustManager
-            ),
                 readerCertWithGoogleAccount
             )
         }
@@ -615,7 +891,7 @@ private suspend fun calculateRequester(
             appId = appId.appId,
             origin = origin.origin
         ),
-        trustPoint
+        trustMetadata
     )
 }
 

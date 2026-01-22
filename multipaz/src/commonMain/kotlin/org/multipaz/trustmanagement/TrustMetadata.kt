@@ -4,7 +4,7 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.annotation.CborSerializable
 
 /**
- * Metadata about entity that can be trusted.
+ * Metadata about an entity that can be trusted.
  *
  * @param displayName a name suitable to display to the end user, for example "Utopia Brewery",
  *   "Utopia-E-Mart", or "Utopia DMV". This should be kept short as it may be used in for

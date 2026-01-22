@@ -43,11 +43,13 @@ import org.multipaz.util.getUInt32
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.min
+import kotlin.time.Duration.Companion.seconds
 
 internal class BlePeripheralManagerAndroid: BlePeripheralManager {
     companion object {
         private const val TAG = "BlePeripheralManagerAndroid"
 
+        @Volatile
         private var deferredCloseJob: Job? = null
         private var deferredCloseSocket: BluetoothSocket? = null
     }
@@ -570,12 +572,11 @@ internal class BlePeripheralManagerAndroid: BlePeripheralManager {
         l2capServerSocket?.close()
         l2capServerSocket = null
         incomingMessages.close()
+        // Need to wait a short while since close() discards data in-flight.
         l2capSocket?.let {
             deferredCloseSocket = it
             deferredCloseJob = CoroutineScope(Dispatchers.IO).launch() {
-                // Need 25 seconds for ZKP since the proofs are large
-                delay(25_000)
-                it.close()
+                delay(2.seconds)
                 Logger.i(TAG, "Closing deferred L2CAP socket (via delay)")
                 try {
                     deferredCloseSocket?.close()

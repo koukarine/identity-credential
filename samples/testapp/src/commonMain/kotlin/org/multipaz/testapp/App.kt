@@ -63,6 +63,7 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.DataItem
 import org.multipaz.certext.MultipazExtension
 import org.multipaz.certext.fromCbor
+import org.multipaz.compose.branding.Branding
 import org.multipaz.compose.document.DocumentModel
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.compose.provisioning.Provisioning
@@ -92,10 +93,11 @@ import org.multipaz.mdoc.vical.SignedVical
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.longfellow.LongfellowZkSystem
 import org.multipaz.nfc.NfcTagReader
-import org.multipaz.presentment.model.PresentmentModel
 import org.multipaz.presentment.model.PresentmentSource
 import org.multipaz.presentment.model.SimplePresentmentSource
 import org.multipaz.prompt.PromptModel
+import org.multipaz.prompt.promptModelRequestConsent
+import org.multipaz.prompt.promptModelSilentConsent
 import org.multipaz.provisioning.ProvisioningModel
 import org.multipaz.request.Requester
 import org.multipaz.secure_area_test_app.ui.CloudSecureAreaScreen
@@ -108,7 +110,6 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.testapp.provisioning.ProvisioningSupport
 import org.multipaz.testapp.ui.AboutScreen
 import org.multipaz.testapp.ui.AndroidKeystoreSecureAreaScreen
-import org.multipaz.testapp.ui.AppTheme
 import org.multipaz.testapp.ui.CertificateScreen
 import org.multipaz.testapp.ui.CertificateViewerExamplesScreen
 import org.multipaz.testapp.ui.ConsentPromptScreen
@@ -205,10 +206,13 @@ class App private constructor (val promptModel: PromptModel) {
         return SimplePresentmentSource(
             documentStore = documentStore,
             documentTypeRepository = documentTypeRepository,
-            readerTrustManager = readerTrustManager,
             zkSystemRepository = zkSystemRepository,
-            skipConsentPrompt = !settingsModel.presentmentShowConsentPrompt.value,
-            dynamicMetadataResolver = ::dynamicMetadataResolver,
+            showConsentPromptFn = if (settingsModel.presentmentShowConsentPrompt.value) {
+                ::promptModelRequestConsent
+            } else {
+                ::promptModelSilentConsent
+            },
+            resolveTrustFn = ::resolveTrust,
             preferSignatureToKeyAgreement = settingsModel.presentmentPreferSignatureToKeyAgreement.value,
             domainMdocSignature = if (useAuth) {
                 TestAppUtils.CREDENTIAL_DOMAIN_MDOC_USER_AUTH
@@ -229,10 +233,12 @@ class App private constructor (val promptModel: PromptModel) {
         )
     }
 
-    fun dynamicMetadataResolver(requester: Requester): TrustMetadata? {
-        if (requester.certChain != null &&
-            requester.certChain!!.certificates.last().ecPublicKey == MULTIPAZ_IDENTITY_READER_CERT_PUBLIC_KEY
-        ) {
+    suspend fun resolveTrust(requester: Requester): TrustMetadata? {
+        // If available, use dynamic metadata in Multipaz X509 extension for a Google account... Since this is
+        // TestApp also trust the "Untrusted Devices" CA (production wallets would not want to do that)
+        val rootPublicKey = requester.certChain?.certificates?.last()?.ecPublicKey
+        if (rootPublicKey == MULTIPAZ_IDENTITY_READER_CERT_PUBLIC_KEY ||
+            rootPublicKey == MULTIPAZ_IDENTITY_READER_CERT_UNTRUSTED_DEVICES_PUBLIC_KEY) {
             val readerCert = requester.certChain!!.certificates.first()
             readerCert.getExtensionValue(OID.X509_EXTENSION_MULTIPAZ_EXTENSION.oid)?.let { extData ->
                 MultipazExtension.fromCbor(extData).googleAccount?.let { googleAccount ->
@@ -245,6 +251,13 @@ class App private constructor (val promptModel: PromptModel) {
                         )
                     }
                 }
+            }
+        }
+        // Otherwise use our readerTrustManager...
+        requester.certChain?.let { certChain ->
+            val trustResult = readerTrustManager.verify(certChain.certificates)
+            if (trustResult.isTrusted) {
+                return trustResult.trustPoints.first().metadata
             }
         }
         return null
@@ -343,7 +356,7 @@ class App private constructor (val promptModel: PromptModel) {
         if (platformSecureArea !is SoftwareSecureArea) {
             secureAreaRepositoryBuilder.add(platformSecureArea)
         }
-        val secureAreaRepository = secureAreaRepositoryBuilder.build()
+        secureAreaRepository = secureAreaRepositoryBuilder.build()
         documentStore = buildDocumentStore(
             storage = TestAppConfiguration.storage,
             secureAreaRepository = secureAreaRepository
@@ -505,7 +518,6 @@ class App private constructor (val promptModel: PromptModel) {
                 keyStorage.insert("readerRootCert", ByteString(Cbor.encode(bundledReaderRootCert.toDataItem())))
                 bundledReaderRootCert
             }
-        println("readerRootCert: ${readerRootCert.toPem()}")
         readerRootKey = AsymmetricKey.X509CertifiedExplicit(
             certChain = X509CertChain(listOf(readerRootCert)),
             privateKey = readerRootPrivateKey
@@ -589,8 +601,24 @@ class App private constructor (val promptModel: PromptModel) {
             // This is for https://verifier.multipaz.org website.
             try {
                 builtInReaderTrustManager.addX509Cert(
-                    certificate = X509Cert(
-                        "30820269308201efa0030201020210b7352f14308a2d40564006785270b0e7300a06082a8648ce3d0403033037310b300906035504060c0255533128302606035504030c1f76657269666965722e6d756c746970617a2e6f726720526561646572204341301e170d3235303631393232313633325a170d3330303631393232313633325a3037310b300906035504060c0255533128302606035504030c1f76657269666965722e6d756c746970617a2e6f7267205265616465722043413076301006072a8648ce3d020106052b81040022036200046baa02cc2f2b7c77f054e9907fcdd6c87110144f07acb2be371b2e7c90eb48580c5e3851bcfb777c88e533244069ff78636e54c7db5783edbc133cc1ff11bbabc3ff150f67392264c38710255743fee7cde7df6e55d7e9d5445d1bde559dcba8a381bf3081bc300e0603551d0f0101ff04040302010630120603551d130101ff040830060101ff02010030560603551d1f044f304d304ba049a047864568747470733a2f2f6769746875622e636f6d2f6f70656e77616c6c65742d666f756e646174696f6e2d6c6162732f6964656e746974792d63726564656e7469616c2f63726c301d0603551d0e04160414b18439852f4a6eeabfea62adbc51d081f7488729301f0603551d23041830168014b18439852f4a6eeabfea62adbc51d081f7488729300a06082a8648ce3d040303036800306502302a1f3bb0afdc31bcee73d3c5bf289245e76bd91a0fd1fb852b45fc75d3a98ba84430e6a91cbfc6b3f401c91382a43a64023100db22d2243644bb5188f2e0a102c0c167024fb6fe4a1d48ead55a6893af52367fb3cdbd66369aa689ecbeb5c84f063666".fromHexByteString()
+                    certificate = X509Cert.fromPem(
+                        """
+                            -----BEGIN CERTIFICATE-----
+                            MIICrjCCAjSgAwIBAgIQPBwq4BiWYFZE6A+NyGDT8jAKBggqhkjOPQQDAzBMMT0wOwYDVQQDDDRW
+                            ZXJpZmllciBSb290IGF0IGh0dHBzOi8vaXNzdWVyLm11bHRpcGF6Lm9yZy9yZWNvcmRzMQswCQYD
+                            VQQGDAJVUzAeFw0yNjAxMDUxNjM0MzNaFw00MTAxMDExNjM0MzNaMEwxPTA7BgNVBAMMNFZlcmlm
+                            aWVyIFJvb3QgYXQgaHR0cHM6Ly9pc3N1ZXIubXVsdGlwYXoub3JnL3JlY29yZHMxCzAJBgNVBAYM
+                            AlVTMHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEY3+0sjs0mzzXVlxSfAsimOl9pviPCMONvjT7a7ZR
+                            5FuQATIYnHPK8Qu/YJtwG7LWMPgsUR6H9fwyfLMqHZ309z+MJyDgKcn5tmlCyT0rslJzqWQeC1oB
+                            /tXsFcc9Y5dto4HaMIHXMA4GA1UdDwEB/wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEBMC4GA1Ud
+                            EgQnMCWGI2h0dHBzOi8vaXNzdWVyLm11bHRpcGF6Lm9yZy9yZWNvcmRzMEEGA1UdHwQ6MDgwNqA0
+                            oDKGMGh0dHBzOi8vaXNzdWVyLm11bHRpcGF6Lm9yZy9yZWNvcmRzL2NybC92ZXJpZmllcjAdBgNV
+                            HQ4EFgQUkdd4v76+FW8lvSXKJ+I/z0D+JCUwHwYDVR0jBBgwFoAUkdd4v76+FW8lvSXKJ+I/z0D+
+                            JCUwCgYIKoZIzj0EAwMDaAAwZQIwWJx6Dn0NRjKCXiRKesqOKlA+CI5MhTDP9uj5T857U8alpOsD
+                            Ho923n0DcjK5o/GeAjEAkEUFodNSrClSunFQAN+63KMqZmyNyS/pBi7k3CH1gTzC/kC9uU4yADKe
+                            MTZj3/iH
+                            -----END CERTIFICATE-----
+                        """.trimIndent()
                     ),
                     metadata = TrustMetadata(
                         displayName = "Multipaz Verifier",
@@ -736,10 +764,6 @@ class App private constructor (val promptModel: PromptModel) {
 
     private lateinit var snackbarHostState: SnackbarHostState
 
-    private val presentmentModel = PresentmentModel().apply {
-        setPromptModel(this@App.promptModel)
-    }
-
     @Composable
     @Preview
     fun Content(navController: NavHostController = rememberNavController()) {
@@ -789,9 +813,12 @@ class App private constructor (val promptModel: PromptModel) {
 
         snackbarHostState = remember { SnackbarHostState() }
 
-        AppTheme {
-            PromptDialogs(promptModel)
-
+        val currentBranding = Branding.Current.collectAsState().value
+        currentBranding.theme {
+            PromptDialogs(
+                promptModel = promptModel,
+                imageLoader = imageLoader
+            )
             NavHost(
                 navController = navController,
                 startDestination = StartDestination,
@@ -825,7 +852,6 @@ class App private constructor (val promptModel: PromptModel) {
                             onClickQrCodes = { navController.navigate(QrCodesDestination) },
                             onClickNfc = { navController.navigate(NfcDestination) },
                             onClickIsoMdocProximitySharing = {
-                                presentmentModel.reset()
                                 navController.navigate(IsoMdocProximitySharingDestination)
                             },
                             onClickIsoMdocProximityReading = {
@@ -1075,9 +1101,8 @@ class App private constructor (val promptModel: PromptModel) {
                 composable<ConsentPromptDestination> { backStackEntry ->
                     WithAppBar(navController, "Consent Prompt use-cases") {
                         ConsentPromptScreen(
-                            imageLoader = imageLoader,
-                            documentTypeRepository = documentTypeRepository,
                             secureAreaRepository = secureAreaRepository,
+                            promptModel = promptModel,
                             showToast = { message -> showToast(message) },
                         )
                     }
@@ -1102,11 +1127,8 @@ class App private constructor (val promptModel: PromptModel) {
                     WithAppBar(navController, "ISO mdoc Proximity Presentment") {
                         IsoMdocProximitySharingScreen(
                             presentmentSource = getPresentmentSource(),
-                            presentmentModel = presentmentModel,
                             settingsModel = settingsModel,
                             promptModel = promptModel,
-                            documentTypeRepository = documentTypeRepository,
-                            imageLoader = imageLoader,
                             showToast = { message -> showToast(message) },
                         )
                     }

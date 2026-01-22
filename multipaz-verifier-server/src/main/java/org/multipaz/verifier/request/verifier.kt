@@ -84,7 +84,7 @@ import org.multipaz.documenttype.knowntypes.IDPass
 import org.multipaz.documenttype.knowntypes.Loyalty
 import org.multipaz.mdoc.request.DocRequestInfo
 import org.multipaz.mdoc.request.ZkRequest
-import org.multipaz.mdoc.request.buildDeviceRequestSuspend
+import org.multipaz.mdoc.request.buildDeviceRequest
 import org.multipaz.mdoc.response.DeviceResponse
 import org.multipaz.mdoc.zkp.ZkSystemRepository
 import org.multipaz.mdoc.zkp.ZkSystemSpec
@@ -1923,7 +1923,7 @@ private suspend fun mdocCalcDcRequestStringMdocApi(
         null
     }
 
-    val encodedDeviceRequest = Cbor.encode(buildDeviceRequestSuspend(
+    val encodedDeviceRequest = Cbor.encode(buildDeviceRequest(
         sessionTranscript = sessionTranscript
     ) {
         addDocRequest(

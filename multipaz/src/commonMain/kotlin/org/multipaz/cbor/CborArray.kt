@@ -135,7 +135,7 @@ class CborArray(
  * @param builderAction the builder action.
  * @return the resulting [DataItem].
  */
-fun buildCborArray(
+inline fun buildCborArray(
     builderAction: ArrayBuilder<CborBuilder>.() -> Unit
 ): DataItem {
     val builder = CborArray.builder()
@@ -148,7 +148,7 @@ fun buildCborArray(
  *
  * @param builderAction the builder action.
  */
-fun<T> ArrayBuilder<T>.addCborArray(builderAction: ArrayBuilder<ArrayBuilder<T>>.() -> Unit) {
+inline fun<T> ArrayBuilder<T>.addCborArray(builderAction: ArrayBuilder<ArrayBuilder<T>>.() -> Unit) {
     val innerBuilder = addArray()
     innerBuilder.builderAction()
     innerBuilder.end()
@@ -159,7 +159,7 @@ fun<T> ArrayBuilder<T>.addCborArray(builderAction: ArrayBuilder<ArrayBuilder<T>>
  *
  * @param builderAction the builder action.
  */
-fun<T> ArrayBuilder<T>.addCborMap(builderAction: MapBuilder<ArrayBuilder<T>>.() -> Unit) {
+inline fun<T> ArrayBuilder<T>.addCborMap(builderAction: MapBuilder<ArrayBuilder<T>>.() -> Unit) {
     val innerBuilder = addMap()
     innerBuilder.builderAction()
     innerBuilder.end()

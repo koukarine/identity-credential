@@ -248,7 +248,7 @@ data class DeviceEngagement private constructor(
  * @param builderAction the builder action.
  * @return a [DeviceEngagement].
  */
-fun buildDeviceEngagement(
+inline fun buildDeviceEngagement(
     eDeviceKey: EcPublicKey,
     version: String? = null,
     builderAction: DeviceEngagement.Builder.() -> Unit

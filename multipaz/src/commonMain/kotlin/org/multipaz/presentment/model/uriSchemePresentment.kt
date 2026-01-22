@@ -2,6 +2,7 @@ package org.multipaz.presentment.model
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
@@ -20,36 +21,35 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.multipaz.crypto.JsonWebSignature
-import org.multipaz.document.Document
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.openid.OpenID4VP
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
-import org.multipaz.request.Requester
-import org.multipaz.trustmanagement.TrustPoint
+import org.multipaz.prompt.ShowConsentPromptFn
 import org.multipaz.util.toBase64Url
 
 private const val TAG = "uriSchemePresentment"
 
-internal suspend fun uriSchemePresentment(
-    documentTypeRepository: DocumentTypeRepository,
+/**
+ * Present credentials according to OpenID4VP 1.0 w/ URI schemes.
+ *
+ * @param source the source of truth used for presentment.
+ * @param uri the referrer.
+ * @param origin the origin.
+ * @param httpClientEngineFactory a [HttpClientEngineFactory].
+ * @return the redirect URI, caller should open this in the user's default browser.
+ */
+suspend fun uriSchemePresentment(
     source: PresentmentSource,
-    mechanism: UriSchemePresentmentMechanism,
-    dismissable: MutableStateFlow<Boolean>,
-    showConsentPrompt: suspend (
-        credentialPresentmentData: CredentialPresentmentData,
-        preselectedDocuments: List<Document>,
-        requester: Requester,
-        trustPoint: TrustPoint?
-    ) -> CredentialPresentmentSelection?
-) {
-    val parameters = mechanism.uri.parseUrlEncodedParameters()
+    uri: String,
+    origin: String?,
+    httpClientEngineFactory: HttpClientEngineFactory<*>,
+): String {
+    val parameters = uri.parseUrlEncodedParameters()
     // TODO: maybe also support `request` in addition to `request_uri`, that is, the case
     //   where the request is passed by value instead of reference
     val requestUri = parameters["request_uri"] ?: throw IllegalStateException("No request_uri")
     val requestUriMethod = parameters["request_uri_method"] ?: "get"
 
-    val httpClient = HttpClient(mechanism.httpClientEngineFactory) {
+    val httpClient = HttpClient(httpClientEngineFactory) {
         install(HttpTimeout)
     }
     val requestObjectMediaType = ContentType("application", "oauth-authz-req+jwt")
@@ -80,9 +80,8 @@ internal suspend fun uriSchemePresentment(
         version = OpenID4VP.Version.DRAFT_29,
         preselectedDocuments = listOf(),
         source = source,
-        showConsentPrompt = showConsentPrompt,
         appId = null, // TODO: maybe pass the browser's appId if we can
-        origin = mechanism.origin,
+        origin = origin,
         request = requestObject,
         requesterCertChain = requesterChain,
     )
@@ -115,5 +114,5 @@ internal suspend fun uriSchemePresentment(
     val bodyText = (postResponseResponse.body() as ByteArray).decodeToString()
     val postResponseBody = Json.decodeFromString<JsonObject>(bodyText)
     val redirectUri = postResponseBody["redirect_uri"]!!.jsonPrimitive.content
-    mechanism.openUriInBrowser(redirectUri)
+    return redirectUri
 }

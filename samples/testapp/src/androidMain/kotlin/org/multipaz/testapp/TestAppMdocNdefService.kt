@@ -1,33 +1,52 @@
 package org.multipaz.testapp
 
-import org.multipaz.util.Platform
 import org.multipaz.compose.mdoc.MdocNdefService
+import org.multipaz.compose.prompt.PresentmentActivity
 import org.multipaz.mdoc.transport.MdocTransportOptions
+import org.multipaz.util.Logger
+import kotlin.time.Clock
+
+private const val TAG = "TestAppMdocNdefService"
 
 class TestAppMdocNdefService: MdocNdefService() {
-    private lateinit var settingsModel: TestAppSettingsModel
+
+    //val promptModel = TransparentActivityPromptModel.Builder(
+    //    theme = { content -> AppTheme(content) }
+    //).apply { addCommonDialogs() }.build()
 
     override suspend fun getSettings(): Settings {
-        settingsModel = TestAppSettingsModel.create(
-            storage = Platform.storage,
-            readOnly = true
+        // TODO: optimize initialization of App so we can just get settingsModel and presentmentSource() out
+        val t0 = Clock.System.now()
+        val app = App.getInstance()
+        app.initialize()
+        val t1 = Clock.System.now()
+        Logger.i(TAG, "App initialized in ${(t1 - t0).inWholeMilliseconds} ms")
+
+        TestAppConfiguration.cryptoInit(app.settingsModel)
+
+        val source = app.getPresentmentSource()
+        PresentmentActivity.presentmentModel.reset(
+            documentStore = source.documentStore,
+            documentTypeRepository = source.documentTypeRepository,
+            // TODO: if user is currently selecting a document, pass it here
+            preselectedDocuments = emptyList()
         )
-        TestAppConfiguration.cryptoInit(settingsModel)
 
         return Settings(
-            sessionEncryptionCurve = settingsModel.presentmentSessionEncryptionCurve.value,
-            allowMultipleRequests = settingsModel.presentmentAllowMultipleRequests.value,
-            useNegotiatedHandover = settingsModel.presentmentUseNegotiatedHandover.value,
-            negotiatedHandoverPreferredOrder = settingsModel.presentmentNegotiatedHandoverPreferredOrder.value,
-            staticHandoverBleCentralClientModeEnabled = settingsModel.presentmentBleCentralClientModeEnabled.value,
-            staticHandoverBlePeripheralServerModeEnabled = settingsModel.presentmentBlePeripheralServerModeEnabled.value,
-            staticHandoverNfcDataTransferEnabled = settingsModel.presentmentNfcDataTransferEnabled.value,
+            source = app.getPresentmentSource(),
+            promptModel = PresentmentActivity.promptModel,
+            presentmentModel = PresentmentActivity.presentmentModel,
+            activityClass = PresentmentActivity::class.java,
+            sessionEncryptionCurve = app.settingsModel.presentmentSessionEncryptionCurve.value,
+            useNegotiatedHandover = app.settingsModel.presentmentUseNegotiatedHandover.value,
+            negotiatedHandoverPreferredOrder = app.settingsModel.presentmentNegotiatedHandoverPreferredOrder.value,
+            staticHandoverBleCentralClientModeEnabled = app.settingsModel.presentmentBleCentralClientModeEnabled.value,
+            staticHandoverBlePeripheralServerModeEnabled = app.settingsModel.presentmentBlePeripheralServerModeEnabled.value,
+            staticHandoverNfcDataTransferEnabled = app.settingsModel.presentmentNfcDataTransferEnabled.value,
             transportOptions = MdocTransportOptions(
-                bleUseL2CAP = settingsModel.presentmentBleL2CapEnabled.value,
-                bleUseL2CAPInEngagement = settingsModel.presentmentBleL2CapInEngagementEnabled.value
-            ),
-            promptModel = TestAppConfiguration.promptModel,
-            presentmentActivityClass = TestAppMdocNfcPresentmentActivity::class.java
+                bleUseL2CAP = app.settingsModel.presentmentBleL2CapEnabled.value,
+                bleUseL2CAPInEngagement = app.settingsModel.presentmentBleL2CapInEngagementEnabled.value
+            )
         )
     }
 }

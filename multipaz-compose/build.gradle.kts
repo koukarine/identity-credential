@@ -102,6 +102,8 @@ kotlin {
                 implementation(libs.kotlinx.io.core)
                 implementation(libs.coil.core)
                 implementation(libs.coil.compose.core)
+                implementation(libs.coil.ktor3)
+                implementation(libs.compottie)
             }
         }
         val commonTest by getting {
@@ -114,6 +116,7 @@ kotlin {
         }
         val androidMain by getting {
             dependencies {
+                implementation(libs.accompanist.drawablepainter)
                 implementation(libs.accompanist.permissions)
                 implementation(libs.androidx.material)
                 implementation(libs.androidx.biometrics)
@@ -125,6 +128,7 @@ kotlin {
                 implementation(libs.play.services.identity.credentials)
                 implementation(libs.androidx.credentials)
                 implementation(libs.androidx.credentials.registry.provider)
+                implementation(libs.ktor.client.android)
             }
         }
     }

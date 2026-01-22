@@ -23,7 +23,7 @@ class X509CrlTests {
     fun roundtrip() = runTest {
         val signingKey = AsymmetricKey.ephemeral()
         val now = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
-        val newCrl = buildCrl(
+        val newCrl = buildX509Crl(
             signingKey = signingKey,
             issuer = X500Name.fromName("CN=foobar"),
             thisUpdate = now,
@@ -46,7 +46,7 @@ class X509CrlTests {
     fun extensions() = runTest {
         val signingKey = AsymmetricKey.ephemeral()
         val now = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
-        val newCrl = buildCrl(
+        val newCrl = buildX509Crl(
             signingKey = signingKey,
             issuer = X500Name.fromName("CN=foobar"),
             thisUpdate = now,

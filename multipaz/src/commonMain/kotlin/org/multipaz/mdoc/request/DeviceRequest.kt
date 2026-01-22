@@ -427,35 +427,11 @@ data class DeviceRequest private constructor(
  * @param builderAction the builder action.
  * @return a [DeviceRequest].
  */
-suspend fun buildDeviceRequest(
+inline fun buildDeviceRequest(
     sessionTranscript: DataItem,
     deviceRequestInfo: DeviceRequestInfo? = null,
     version: String? = null,
-    builderAction: suspend DeviceRequest.Builder.() -> Unit
-): DeviceRequest {
-    val builder = DeviceRequest.Builder(
-        version = version,
-        deviceRequestInfo = deviceRequestInfo,
-        sessionTranscript = sessionTranscript
-    )
-    builder.builderAction()
-    return builder.build()
-}
-
-/**
- * Builds a [DeviceRequest].
- *
- * @param sessionTranscript the `SessionTranscript` CBOR.
- * @param deviceRequestInfo a [DeviceRequestInfo] or `null`.
- * @param version the version to use or `null` to automatically determine which version to use.
- * @param builderAction the builder action.
- * @return a [DeviceRequest].
- */
-suspend fun buildDeviceRequestSuspend(
-    sessionTranscript: DataItem,
-    deviceRequestInfo: DeviceRequestInfo? = null,
-    version: String? = null,
-    builderAction: suspend DeviceRequest.Builder.() -> Unit
+    builderAction: DeviceRequest.Builder.() -> Unit
 ): DeviceRequest {
     val builder = DeviceRequest.Builder(
         version = version,

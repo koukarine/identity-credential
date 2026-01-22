@@ -16,7 +16,7 @@ final class RequestAuthorizationViewModel: ObservableObject {
     var source: PresentmentSource!
     var credentialPresentmentData: CredentialPresentmentData!
     var requester: Requester!
-    var trustPoint: TrustPoint? = nil
+    var trustMetadata: TrustMetadata? = nil
 
     func startLoadingRequest(
         requestContext: ISO18013MobileDocumentRequestContext,
@@ -63,15 +63,17 @@ final class RequestAuthorizationViewModel: ObservableObject {
                     let certChain = auth.authenticationCertificateChain.map { secCert in
                         X509Cert(encoded: ByteString(bytes: (SecCertificateCopyData(secCert) as Data).toByteArray()))
                     }
-                    let now = Date.now
-                    let trustResult = try! await source.readerTrustManager.verify(chain: certChain, atTime: now.toKotlinInstant())
-                    if (trustResult.isTrusted == true) {
-                        trustPoint = trustResult.trustPoints.first
-                    }
+                    
+                    let requester2 = Requester(
+                        certChain: X509CertChain(certificates: certChain),
+                        appId: nil,
+                        origin: requestContext.requestingWebsiteOrigin?.getOrigin()
+                    )
+                    trustMetadata = try! await source.resolveTrust(requester: requester2)
                 }
             }
             print("Prepared PresentmentSource in \(sourceDuration.toMilliseconds()) msec")
-            print("Calculated request and trust point in \(calcDuration.toMilliseconds()) msec")
+            print("Calculated request and trustMetadata in \(calcDuration.toMilliseconds()) msec")
             self.isLoading = false
         }
     }
@@ -109,7 +111,7 @@ public struct RequestAuthorizationView : View {
                 Consent(
                     credentialPresentmentData: viewModel.credentialPresentmentData,
                     requester: viewModel.requester,
-                    trustPoint: viewModel.trustPoint,
+                    trustMetadata: viewModel.trustMetadata,
                     onConfirm: { selection in
                         Task {
                             try await requestContext.sendResponse { rawRequest in

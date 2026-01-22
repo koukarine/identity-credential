@@ -452,7 +452,7 @@ data class X509Cert(
  * @param builderAction the builder action.
  * @return a [X509Cert].
  */
-suspend fun buildX509Cert(
+suspend inline fun buildX509Cert(
     publicKey: EcPublicKey,
     signingKey: AsymmetricKey,
     serialNumber: ASN1Integer,

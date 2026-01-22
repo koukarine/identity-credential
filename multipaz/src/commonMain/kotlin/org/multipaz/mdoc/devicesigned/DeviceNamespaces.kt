@@ -131,7 +131,7 @@ data class DeviceNamespaces(
  * @param builderAction the builder action.
  * @return the built [DeviceNamespaces].
  */
-fun buildDeviceNamespaces(
+inline fun buildDeviceNamespaces(
     builderAction: DeviceNamespaces.Builder.() -> Unit
 ): DeviceNamespaces {
     val builder = DeviceNamespaces.Builder()

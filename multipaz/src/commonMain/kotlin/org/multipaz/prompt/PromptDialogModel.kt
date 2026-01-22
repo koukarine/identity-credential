@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,6 +59,15 @@ abstract class PromptDialogModel<ParametersT, ResultT> {
      * This is determined by detecting that [dialogState] has some subscribers.
      */
     val bound: Boolean get() = mutableDialogState.subscriptionCount.value > 0
+
+    /**
+     * Waits until the model is bound to the UI.
+     *
+     * This is done by waiting until [dialogState] has at least one subscriber.
+     */
+    suspend fun waitUntilBound() {
+        mutableDialogState.subscriptionCount.first { it > 0 }
+    }
 
     /**
      * A class that describes the state of the dialog.
@@ -110,7 +120,7 @@ abstract class PromptDialogModel<ParametersT, ResultT> {
         lingerDuration: Duration = 0.seconds
     ): ResultT {
         if (!bound) {
-            owningPromptModel!!.launchUi(this)
+            owningPromptModel!!.callLaunchUi(this)
             if (!bound) {
                 throw PromptUiNotAvailableException()
             }
@@ -130,6 +140,7 @@ abstract class PromptDialogModel<ParametersT, ResultT> {
         val dialogShownState = DialogShownState(parameters, resultChannel)
         mutableDialogState.emit(dialogShownState)
         var effectiveLingerDuration = lingerDuration
+        owningPromptModel!!.callPromptIsShowing(this)
         return try {
             resultChannel.receive()
         } catch (err: PromptDismissedException) {
@@ -147,10 +158,12 @@ abstract class PromptDialogModel<ParametersT, ResultT> {
                         delay(effectiveLingerDuration)
                     } finally {
                         hideDialog(dialogShownState)
+                        owningPromptModel!!.callPromptIsNoLongerShowing(this@PromptDialogModel)
                     }
                 }
             } else {
                 hideDialog(dialogShownState)
+                owningPromptModel!!.callPromptIsNoLongerShowing(this)
             }
         }
     }

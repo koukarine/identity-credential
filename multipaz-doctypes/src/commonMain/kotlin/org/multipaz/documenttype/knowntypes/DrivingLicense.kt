@@ -508,7 +508,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                "Jr III".toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(
@@ -538,7 +538,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.MILITARY_TECH,
-                null
+                1.toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(
@@ -582,7 +582,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                "Musstermensch".toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -592,7 +592,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                "Erica".toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.StringOptions(Options.AAMVA_NAME_SUFFIX),
@@ -602,7 +602,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.PERSON,
-                null
+                "Ica".toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(
@@ -678,7 +678,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.STARS,
-                null
+                1.toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(
@@ -714,7 +714,7 @@ object DrivingLicense {
                 true,
                 AAMVA_NAMESPACE,
                 Icon.CALENDAR_CLOCK,
-                null
+                LocalDate.parse(SampleData.EXPIRY_DATE).toDataItemFullDate()
             )
             .addMdocAttribute(
                 DocumentAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
@@ -737,7 +737,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.FACE,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.Picture,
@@ -747,7 +747,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.FINGERPRINT,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.Picture,
@@ -757,7 +757,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.SIGNATURE,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.Picture,
@@ -767,7 +767,7 @@ object DrivingLicense {
                 false,
                 MDL_NAMESPACE,
                 Icon.EYE_TRACKING,
-                null
+                Simple.NULL
             )
             .addMdocAttribute(
                 DocumentAttributeType.String,
@@ -777,7 +777,7 @@ object DrivingLicense {
                 false,
                 AAMVA_NAMESPACE,
                 Icon.STARS,
-                null
+                "".toDataItem()
             )
             .addMdocAttribute(
                 DocumentAttributeType.Number,

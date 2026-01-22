@@ -252,7 +252,7 @@ class DeviceRequestTest {
     fun readerAuthRoundTripSecureArea() = runTest {
         val ra = ReaderAuth.generateSecureArea()
         val sessionTranscript = buildCborArray { add("Doesn't matter") }
-        val deviceRequest = buildDeviceRequestSuspend(
+        val deviceRequest = buildDeviceRequest(
             sessionTranscript = sessionTranscript
         ) {
             addDocRequest(
@@ -354,7 +354,7 @@ class DeviceRequestTest {
     fun readerAuthAllSecureAreaRoundTrip() = runTest {
         val ra = ReaderAuth.generateSecureArea()
         val sessionTranscript = buildCborArray { add("Doesn't matter") }
-        val deviceRequest = buildDeviceRequestSuspend(
+        val deviceRequest = buildDeviceRequest(
             sessionTranscript = sessionTranscript
         ) {
             addDocRequest(

@@ -16,24 +16,35 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import multipazproject.samples.testapp.generated.resources.Res
+import org.multipaz.compose.branding.Branding
 import org.multipaz.crypto.EcCurve
 import org.multipaz.testapp.App
 import org.multipaz.testapp.TestAppPlatform
 import org.multipaz.testapp.TestAppSettingsModel
 import org.multipaz.compose.cards.WarningCard
+import org.multipaz.compose.decodeImage
 import org.multipaz.digitalcredentials.Default
 import org.multipaz.digitalcredentials.DigitalCredentials
+import org.multipaz.document.Document
 import org.multipaz.testapp.TestAppConfiguration
+import org.multipaz.testapp.ui.customtheme.AppThemeLimeGreen
 
 @Composable
 fun SettingsScreen(
     app: App,
     showToast: (message: String) -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     // NFC engagement as an mdoc is only supported on Android.
     //
     val nfcAvailable = (TestAppConfiguration.platform == TestAppPlatform.ANDROID)
@@ -169,13 +180,6 @@ fun SettingsScreen(
                 title = "Use L2CAP in engagement if available",
                 isChecked = app.settingsModel.presentmentBleL2CapInEngagementEnabled.collectAsState().value,
                 onCheckedChange = { app.settingsModel.presentmentBleL2CapInEngagementEnabled.value = it },
-            )
-        }
-        item {
-            SettingToggle(
-                title = "Keep connection open after first request",
-                isChecked = app.settingsModel.presentmentAllowMultipleRequests.collectAsState().value,
-                onCheckedChange = { app.settingsModel.presentmentAllowMultipleRequests.value = it },
             )
         }
 
@@ -325,6 +329,49 @@ fun SettingsScreen(
                 isChecked = app.settingsModel.observeModeEmitPollingFramesAsReader.collectAsState().value,
                 onCheckedChange = { app.settingsModel.observeModeEmitPollingFramesAsReader.value = it },
             )
+        }
+
+        item {
+            HorizontalDivider(
+                modifier = Modifier.padding(8.dp)
+            )
+        }
+
+        item {
+            SettingHeadline("Branding")
+        }
+
+        item {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Button(onClick = {
+                    coroutineScope.launch {
+                        val appIconBitmap = decodeImage(Res.readBytes("drawable/multipaz-logo-lime-green.png"))
+                        Branding.setCurrent(object : Branding {
+                            override val appName: String?
+                                get() = "Multipaz Test App (Lime Green Edition)"
+
+                            override val appIconPainter: Painter?
+                                get() = BitmapPainter(appIconBitmap)
+
+                            override val theme: @Composable (content: @Composable () -> Unit) -> Unit
+                                get() = { AppThemeLimeGreen(it) }
+
+                            // TODO: use lime green default cardart?
+                            override suspend fun renderFallbackCardArt(document: Document): ImageBitmap =
+                                Branding.Default.renderFallbackCardArt(document)
+                        })
+                    }
+                }) {
+                    Text(text = "Use app-provided branding (Lime Green)")
+                }
+
+                Button(onClick = { Branding.setCurrent(Branding.Default) }) {
+                    Text(text = "Reset to default branding")
+                }
+            }
         }
 
         item {

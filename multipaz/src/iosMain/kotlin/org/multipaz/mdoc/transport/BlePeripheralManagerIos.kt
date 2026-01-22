@@ -16,7 +16,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -460,13 +459,8 @@ internal class BlePeripheralManagerIos: BlePeripheralManager {
     }
 
     override fun close() {
-        // Delayed closed because there's no way to flush L2CAP connections...
         _l2capPsm?.let {
-            CoroutineScope(Dispatchers.IO).launch {
-                // Need 25 seconds for ZKP since the proofs are large
-                delay(25_000)
-                peripheralManager.unpublishL2CAPChannel(it.toUShort())
-            }
+            peripheralManager.unpublishL2CAPChannel(it.toUShort())
         }
         peripheralManager.stopAdvertising()
         peripheralManager.removeAllServices()

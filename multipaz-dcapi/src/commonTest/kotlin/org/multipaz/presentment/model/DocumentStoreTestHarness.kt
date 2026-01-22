@@ -43,6 +43,7 @@ import org.multipaz.mdoc.issuersigned.IssuerNamespaces
 import org.multipaz.mdoc.issuersigned.buildIssuerNamespaces
 import org.multipaz.mdoc.mso.MobileSecurityObject
 import org.multipaz.mdoc.util.MdocUtil
+import org.multipaz.prompt.promptModelSilentConsent
 import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.credential.KeyBoundSdJwtVcCredential
 import org.multipaz.securearea.SecureAreaRepository
@@ -134,13 +135,10 @@ class DocumentStoreTestHarness {
 
         documentStore = buildDocumentStore(storage = storage, secureAreaRepository = secureAreaRepository) {}
 
-        val readerTrustManager = TrustManagerLocal(storage = EphemeralStorage())
-
         presentmentSource = SimplePresentmentSource(
             documentStore = documentStore,
             documentTypeRepository = documentTypeRepository,
-            readerTrustManager = readerTrustManager,
-            zkSystemRepository = null,
+            showConsentPromptFn = ::promptModelSilentConsent,
             preferSignatureToKeyAgreement = true,
             domainMdocSignature = "mdoc",
             domainMdocKeyAgreement = "mdoc_key_agreement",

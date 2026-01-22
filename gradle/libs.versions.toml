@@ -29,7 +29,7 @@ ktor = "3.3.3"
 logback = "1.5.21"
 androidx-lifecycle = "2.2.0"
 androidx-lifecycle-ktx = "2.10.0"
-accompanist-permissions = "0.37.3"
+accompanist = "0.37.3"
 nimbus-sdk = "11.30.1"
 zxing = "3.5.4"
 hsqldb = "2.7.4"
@@ -50,6 +50,7 @@ semver = "3.0.0"
 skie = "0.10.8"
 process-phoenix = "3.0.0"
 coil = "3.3.0"
+compottie = "2.0.2"
 # Kotlin/JS wrappers; require `./gradlew kotlinUpgradeYarnLock` after version changes
 # this is how npm works, that will update kotlin-js-store/yarn.lock (part of the repo)
 kotlin-wrappers = "2025.12.1"
@@ -102,7 +103,8 @@ ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref 
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref="logback" }
 androidx-lifecycle-extensions = { module = "androidx.lifecycle:lifecycle-extensions", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle-ktx" }
-accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist-permissions"}
+accompanist-drawablepainter = { group = "com.google.accompanist", name = "accompanist-drawablepainter", version.ref = "accompanist"}
+accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist"}
 nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-sdk" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 hsqldb = { module = "org.hsqldb:hsqldb", version.ref = "hsqldb" }
@@ -132,6 +134,7 @@ kotlin-wrappers-react = { module = "org.jetbrains.kotlin-wrappers:kotlin-react",
 kotlin-wrappers-react-dom = { module = "org.jetbrains.kotlin-wrappers:kotlin-react-dom", version.ref= "kotlin-wrappers-rx" }
 kotlin-wrappers-emotion-react-js = { module = "org.jetbrains.kotlin-wrappers:kotlin-emotion-react-js", version.ref="kotlin-wrappers-em" }
 skie-annotations = { module = "co.touchlab.skie:configuration-annotations", version.ref = "skie" }
+compottie = { module = "io.github.alexzhirkevich:compottie", version.ref="compottie" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

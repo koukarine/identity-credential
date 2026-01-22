@@ -697,12 +697,11 @@ internal class BleCentralManagerAndroid : BleCentralManager {
         gatt?.close()
         gatt = null
         device = null
-        // Needed since l2capSocket.outputStream.flush() isn't working
+        // Need to wait a short while since close() discards data in-flight.
         l2capSocket?.let {
             deferredCloseSocket = it
             deferredCloseJob = CoroutineScope(Dispatchers.IO).launch() {
-                // Need 25 seconds for ZKP since the proofs are large
-                delay(25_000)
+                delay(2.seconds)
                 Logger.i(TAG, "Closing deferred L2CAP socket (via delay)")
                 try {
                     deferredCloseSocket?.close()

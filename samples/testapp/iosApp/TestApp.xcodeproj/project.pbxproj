@@ -16,6 +16,7 @@
 		7B1E53ED2EF5EDE2007C8E8D /* DocumentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1E53EB2EF5EDE2007C8E8D /* DocumentModel.swift */; };
 		7B1E53EE2EF5EE16007C8E8D /* RequestAuthorizationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51EF29922EF40D730077E722 /* RequestAuthorizationView.swift */; };
 		7B1E54072EF5F3CA007C8E8D /* Consent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1E54062EF5F3CA007C8E8D /* Consent.swift */; };
+		7B7E65C52F19ED96000736E1 /* SimplePresentmentSourceExt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7E65C42F19ED96000736E1 /* SimplePresentmentSourceExt.swift */; };
 		7BAB1AC82DB687B000CAC98C /* DeveloperConfig.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 7BAB1AC72DB687B000CAC98C /* DeveloperConfig.xcconfig */; };
 /* End PBXBuildFile section */
 
@@ -56,6 +57,7 @@
 		7B1E53EB2EF5EDE2007C8E8D /* DocumentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentModel.swift; sourceTree = "<group>"; };
 		7B1E54062EF5F3CA007C8E8D /* Consent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Consent.swift; sourceTree = "<group>"; };
 		7B39212C2C27D97A00A18AB5 /* TestApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TestApp.entitlements; sourceTree = "<group>"; };
+		7B7E65C42F19ED96000736E1 /* SimplePresentmentSourceExt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimplePresentmentSourceExt.swift; sourceTree = "<group>"; };
 		7B9C61172DBA8D46000484FF /* AdditionalConfig.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AdditionalConfig.xcconfig; sourceTree = "<group>"; };
 		7BAB1AC72DB687B000CAC98C /* DeveloperConfig.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DeveloperConfig.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -103,6 +105,7 @@
 		51B083112EF4028400A90AA1 /* MultipazSwift */ = {
 			isa = PBXGroup;
 			children = (
+				7B7E65C42F19ED96000736E1 /* SimplePresentmentSourceExt.swift */,
 				51804B222EF70CAF00A95196 /* Extensions.swift */,
 				7B1E54062EF5F3CA007C8E8D /* Consent.swift */,
 				7B1E53EB2EF5EDE2007C8E8D /* DocumentModel.swift */,
@@ -297,6 +300,7 @@
 			files = (
 				51804B232EF70CAF00A95196 /* Extensions.swift in Sources */,
 				7B1E53ED2EF5EDE2007C8E8D /* DocumentModel.swift in Sources */,
+				7B7E65C52F19ED96000736E1 /* SimplePresentmentSourceExt.swift in Sources */,
 				7B1E53EE2EF5EE16007C8E8D /* RequestAuthorizationView.swift in Sources */,
 				7B1E54072EF5F3CA007C8E8D /* Consent.swift in Sources */,
 			);

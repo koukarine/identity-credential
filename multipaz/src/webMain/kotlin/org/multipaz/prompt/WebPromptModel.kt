@@ -3,6 +3,7 @@ package org.multipaz.prompt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.presentment.PresentmentUnlockReason
 import org.multipaz.securearea.PassphraseConstraints
 

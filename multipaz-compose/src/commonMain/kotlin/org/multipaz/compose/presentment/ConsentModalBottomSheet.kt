@@ -1,12 +1,20 @@
 package org.multipaz.compose.presentment
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import kotlinx.coroutines.launch
 import org.multipaz.document.Document
@@ -21,35 +29,31 @@ import org.multipaz.trustmanagement.TrustPoint
  *
  * @param sheetState a [SheetState] for state.
  * @param requester the relying party which is requesting the data.
- * @param trustPoint if the requester is in a trust-list, the [TrustPoint] indicating this
+ * @param trustMetadata [TrustMetadata] conveying the level of trust in the requester, if any.
  * @param credentialPresentmentData the combinatinos of credentials and claims that the user can select.
  * @param preselectedDocuments the list of documents the user may have preselected earlier (for
  *   example an OS-provided credential picker like Android's Credential Manager) or the empty list
  *   if the user didn't preselect.
  * @param imageLoader a [ImageLoader].
- * @param dynamicMetadataResolver a function which can be used to calculate [TrustMetadata] on a
- *   per-request basis.
- * @param appName the name of the application or `null` to not show the name.
- * @param appIconPainter the icon for the application or `null to not show the icon.
+ * @param maxHeight the maximum height of the bottom sheet or `null` if no limit.
+ * @param onDocumentsInFocus called with the documents currently selected for the user, including when
+ *   first shown. If the user selects a different set of documents in the prompt, this will be called again.
  * @param onConfirm called when the user presses the "Share" button, returns the user's selection.
  * @param onCancel called when the sheet is dismissed.
- * @param showCancelAsBack if `true`, the cancel button will say "Back" instead of "Cancel".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConsentModalBottomSheet(
     sheetState: SheetState,
     requester: Requester,
-    trustPoint: TrustPoint?,
+    trustMetadata: TrustMetadata?,
     credentialPresentmentData: CredentialPresentmentData,
     preselectedDocuments: List<Document>,
-    imageLoader: ImageLoader,
-    dynamicMetadataResolver: (requester: Requester) -> TrustMetadata? = { chain -> null },
-    appName: String? = null,
-    appIconPainter: Painter? = null,
+    imageLoader: ImageLoader?,
+    maxHeight: Dp? = null,
+    onDocumentsInFocus: (documents: List<Document>) -> Unit,
     onConfirm: (selection: CredentialPresentmentSelection) -> Unit,
     onCancel: () -> Unit = {},
-    showCancelAsBack: Boolean = false
 ) {
     val coroutineScope = rememberCoroutineScope()
     ModalBottomSheet(
@@ -59,20 +63,19 @@ fun ConsentModalBottomSheet(
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
         Consent(
+            modifier = (if (maxHeight != null) Modifier.heightIn(max = maxHeight) else Modifier)
+                .animateContentSize(),
             requester = requester,
-            trustPoint = trustPoint,
+            trustMetadata = trustMetadata,
             credentialPresentmentData = credentialPresentmentData,
             preselectedDocuments = preselectedDocuments,
             imageLoader = imageLoader,
-            dynamicMetadataResolver = dynamicMetadataResolver,
-            appName = appName,
-            appIconPainter = appIconPainter,
+            onDocumentsInFocus = onDocumentsInFocus,
             onConfirm = onConfirm,
             onCancel = {
                 coroutineScope.launch { sheetState.hide() }
                 onCancel()
             },
-            showCancelAsBack = showCancelAsBack
         )
     }
 }

@@ -146,7 +146,7 @@ class CborMap(
  * @param builderAction the builder action.
  * @return the resulting [DataItem].
  */
-fun buildCborMap(
+inline fun buildCborMap(
     builderAction: MapBuilder<CborBuilder>.() -> Unit
 ): DataItem {
     val builder = CborMap.builder()
@@ -160,7 +160,7 @@ fun buildCborMap(
  * @param key the key to for item to add.
  * @param builderAction the builder action.
  */
-fun<T> MapBuilder<T>.putCborArray(
+inline fun<T> MapBuilder<T>.putCborArray(
     key: DataItem,
     builderAction: ArrayBuilder<MapBuilder<T>>.() -> Unit
 ) {
@@ -175,7 +175,7 @@ fun<T> MapBuilder<T>.putCborArray(
  * @param key the key to for item to add.
  * @param builderAction the builder action.
  */
-fun<T> MapBuilder<T>.putCborArray(
+inline fun<T> MapBuilder<T>.putCborArray(
     key: Long,
     builderAction: ArrayBuilder<MapBuilder<T>>.() -> Unit
 ) {
@@ -190,7 +190,7 @@ fun<T> MapBuilder<T>.putCborArray(
  * @param key the key to for item to add.
  * @param builderAction the builder action.
  */
-fun<T> MapBuilder<T>.putCborArray(
+inline fun<T> MapBuilder<T>.putCborArray(
     key: String,
     builderAction: ArrayBuilder<MapBuilder<T>>.() -> Unit
 ) {
@@ -205,7 +205,7 @@ fun<T> MapBuilder<T>.putCborArray(
  * @param key the key to for item to add.
  * @param builderAction the builder action.
  */
-fun<T> MapBuilder<T>.putCborMap(
+inline fun<T> MapBuilder<T>.putCborMap(
     key: DataItem,
     builderAction: MapBuilder<MapBuilder<T>>.() -> Unit
 ) {
@@ -220,7 +220,7 @@ fun<T> MapBuilder<T>.putCborMap(
  * @param key the key to for item to add.
  * @param builderAction the builder action.
  */
-fun<T> MapBuilder<T>.putCborMap(
+inline fun<T> MapBuilder<T>.putCborMap(
     key: Long,
     builderAction: MapBuilder<MapBuilder<T>>.() -> Unit
 ) {
@@ -235,7 +235,7 @@ fun<T> MapBuilder<T>.putCborMap(
  * @param key the key to for item to add.
  * @param builderAction the builder action.
  */
-fun<T> MapBuilder<T>.putCborMap(
+inline fun<T> MapBuilder<T>.putCborMap(
     key: String,
     builderAction: MapBuilder<MapBuilder<T>>.() -> Unit
 ) {

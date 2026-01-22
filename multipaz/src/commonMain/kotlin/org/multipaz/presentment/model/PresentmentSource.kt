@@ -8,35 +8,77 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.zkp.ZkSystemRepository
+import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.request.JsonRequest
 import org.multipaz.request.MdocRequest
 import org.multipaz.request.Request
 import org.multipaz.request.RequestedClaim
 import org.multipaz.request.Requester
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
-import org.multipaz.trustmanagement.TrustManager
 import org.multipaz.trustmanagement.TrustMetadata
-import org.multipaz.trustmanagement.TrustPoint
-import org.multipaz.util.Logger
 
 /**
  * The source of truth used for credential presentment.
  *
+ * This is used whenever an application wishes to present credentials including the [DocumentStore]
+ * which holds credentials that can be presented and a [DocumentTypeRepository] which contains descriptions
+ * of well-known document types which may be shown in a consent prompt.
+ *
+ * It's also used for more dynamic data such as determining whether the requester is trusted (via [resolveTrust])
+ * and if so what branding to show, whether user consent should be obtained or if preconsent exists (via
+ * [showConsentPrompt]), and even what kind of user authentication to perform to present the credential, if any (by
+ * picking a [Credential] from an appropriate domain in [selectCredential]).
+ *
  * @property documentStore the [DocumentStore] which holds credentials that can be presented.
  * @property documentTypeRepository a [DocumentTypeRepository] which holds metadata for document types.
- * @property readerTrustManager the [TrustManager] used to determine if a reader is trusted.
- * @property skipConsentPrompt set to `true` to not show a consent dialog.
- * @property dynamicMetadataResolver a function which can be used to calculate [TrustMetadata] on a
- *   per-request basis, which may used in credential prompts.
+ * @property zkSystemRepository a [ZkSystemRepository] with ZKP systems or `null`.
+ * @see SimplePresentmentSource for one concrete implementation tailored for ISO mdoc and IETF SD-JWT VC credentials.
  */
 abstract class PresentmentSource(
     open val documentStore: DocumentStore,
     open val documentTypeRepository: DocumentTypeRepository,
-    open val readerTrustManager: TrustManager,
     open val zkSystemRepository: ZkSystemRepository? = null,
-    open val skipConsentPrompt: Boolean = false,
-    open val dynamicMetadataResolver: (requester: Requester) -> TrustMetadata? = { requester -> null },
-    ) {
+) {
+    /**
+     * Determines if a requester is trusted.
+     *
+     * @param requester the requester to check.
+     * @return a [TrustMetadata] with branding and other information about the requester or `null` if not trusted.
+     */
+    abstract suspend fun resolveTrust(requester: Requester): TrustMetadata?
+
+    /**
+     * A function to show a consent prompt.
+     *
+     * An application will typically call [org.multipaz.prompt.promptModelRequestConsent] which will
+     * show a consent prompt to the user. The application may also be configured to exercise consent
+     * previously given by the user in which case it can call [org.multipaz.prompt.promptModelSilentConsent].
+     *
+     * In either case implementations *MUST* always call [onSelectionChanged], even if no user interaction
+     * is happening.
+     *
+     * @param requester the relying party which is requesting the data.
+     * @param trustMetadata [TrustMetadata] conveying the level of trust in the requester, if any.
+     * @param credentialPresentmentData the combinations of credentials and claims that the user can select.
+     * @param preselectedDocuments a list of documents the user may have preselected earlier (for
+     *   example an OS-provided credential picker like Android's Credential Manager) or the empty list
+     *   if the user didn't preselect.
+     * @param onDocumentsInFocus called with the documents currently selected for the user, including when
+     *   first shown. If the user selects a different set of documents in the prompt, this will be called again.
+     * @return `null` if the user dismissed the prompt, otherwise a [CredentialPresentmentSelection] object
+     *   conveying which credentials the user selected, if multiple options are available.
+     * @see [org.multipaz.prompt.ShowConsentPromptFn] which this method wraps.
+     */
+    abstract suspend fun showConsentPrompt(
+        requester: Requester,
+        trustMetadata: TrustMetadata?,
+        credentialPresentmentData: CredentialPresentmentData,
+        preselectedDocuments: List<Document>,
+        onDocumentsInFocus: (documents: List<Document>) -> Unit
+    ): CredentialPresentmentSelection?
+
+    // TODO: why do we have two selectCredential() methods?
 
     /**
      * Chooses a credential from a document.
@@ -70,20 +112,6 @@ abstract class PresentmentSource(
 }
 
 private const val TAG = "PresentmentSource"
-
-internal suspend fun PresentmentSource.findTrustPoint(requester: Requester): TrustPoint? {
-    return requester.certChain?.let {
-        val trustResult = readerTrustManager.verify(it.certificates)
-        if (trustResult.isTrusted) {
-            trustResult.trustPoints[0]
-        } else {
-            trustResult.error?.let {
-                Logger.w(TAG, "Trust-result error", it)
-            }
-            null
-        }
-    }
-}
 
 internal suspend fun PresentmentSource.getDocumentsMatchingRequest(
     request: Request,
@@ -147,85 +175,3 @@ internal suspend fun PresentmentSource.sdjwtDocumentMatchesRequest(
     }
     return false
 }
-
-/*
-/**
- * An interface used for the application to provide data and policy for credential presentment.
- */
-interface PresentmentSource {
-
-    /**
-     * The [DocumentTypeRepository] to look up metadata for incoming requests.
-     */
-    val documentTypeRepository: DocumentTypeRepository
-
-    /**
-     * Finds a [TrustPoint] for a requester.
-     *
-     * @param request The request.
-     * @return a [TrustPoint] or `null` if none could be found.
-     */
-    suspend fun findTrustPoint(
-        request: Request
-    ): TrustPoint?
-
-    /**
-     * Gets the documents that match a given request.
-     *
-     * The documents returned must be distinct.
-     *
-     * @param request the request.
-     * @return zero, one, or more [Document] instances eligible for presentment.
-     */
-    suspend fun getDocumentsMatchingRequest(
-        request: Request,
-    ): List<Document>
-
-    /**
-     * Returns a credential that can be presented.
-     *
-     * @param request the request.
-     * @param document the document to get a credential from or `null`.
-     * @return a [CredentialForPresentment] object with a credential that can be used for presentment.
-     */
-    suspend fun getCredentialForPresentment(
-        request: Request,
-        document: Document?
-    ): CredentialForPresentment
-
-    /**
-     * Function to determine if the consent prompt should be shown.
-     *
-     * @param credential the credential being presented.
-     * @param request the request.
-     * @return `true` if the consent prompt should be shown, `false` otherwise.
-     */
-    fun shouldShowConsentPrompt(
-        credential: Credential,
-        request: Request,
-    ): Boolean
-
-    /**
-     * Function to determine if a Signature should be used for the response if both
-     * Key Agreement and Signatures are possible options.
-     *
-     * Key Agreement provides better privacy to the credential holder because it does not
-     * require producing a potentially non-repudiable signature over reader-provided data.
-     * The holder can always deny the MAC value to a third party because the reader
-     * could have produced it by itself.
-     *
-     * In some cases the reader might prefer a Signature to get proof that the credential
-     * holder really participated in the transaction. This function provides a mechanism
-     * for the holder to honor such a request. The request from the reader to express
-     * this preference would need to be provided out-of-band by the reader.
-     *
-     * @param document the document being presented.
-     * @param request the request.
-     * @return `true` to always use signatures even if key agreement is possible.
-     */
-    fun shouldPreferSignatureToKeyAgreement(
-        document: Document,
-        request: Request,
-    ): Boolean
-}
- */

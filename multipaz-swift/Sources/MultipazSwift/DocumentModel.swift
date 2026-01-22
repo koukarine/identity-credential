@@ -62,10 +62,8 @@ public class DocumentModel {
     public func setDocumentStore(documentStore: DocumentStore) async {
         self.documentStore = documentStore
 
-        for documentId in try! await documentStore.listDocuments() {
-            if let document = try! await documentStore.lookupDocument(identifier: documentId) {
-                await documentInfos.append(getDocumentInfo(document))
-            }
+        for document in try! await documentStore.listDocuments(sort: true) {
+            await documentInfos.append(getDocumentInfo(document))
         }
         Task {
             for await event in documentStore.eventFlow {

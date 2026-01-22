@@ -331,7 +331,7 @@ class DocumentStore private constructor(
  * @param builderAction the builder action.
  * @return a [DocumentStore].
  */
-fun buildDocumentStore(
+inline fun buildDocumentStore(
     storage: Storage,
     secureAreaRepository: SecureAreaRepository,
     builderAction: DocumentStore.Builder.() -> Unit

@@ -112,6 +112,7 @@ kotlin {
                 implementation(libs.androidx.biometrics)
                 implementation(libs.ktor.client.android)
                 implementation(libs.process.phoenix)
+                implementation(libs.accompanist.drawablepainter)
             }
         }
 

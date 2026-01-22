@@ -39,6 +39,7 @@ import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.util.Logger
 import org.multipaz.util.fromHex
 import kotlin.experimental.xor
 import kotlin.random.Random
@@ -393,7 +394,7 @@ class DeviceResponseTest {
     ) {
         val dr = encodedDeviceResponse.copyOf()
         // By inspection we know offset 2916 always contain the issuer signature.
-        dr[2916] = dr[2916].xor(0xff.toByte())
+        dr[2916 + 16] = dr[2916 + 16].xor(0xff.toByte())
         val drParsed = DeviceResponse.fromDataItem(Cbor.decode(dr))
         assertEquals(
             "Signature on MSO failed to verify",
@@ -411,8 +412,8 @@ class DeviceResponseTest {
         sessionTranscript: DataItem
     ) {
         val dr = encodedDeviceResponse.copyOf()
-        // By inspection we know offset 3232 always contain the device auth EC signature. Poison it.
-        dr[3232] = dr[3232].xor(0xff.toByte())
+        // By inspection we know the offset which contain the device auth EC signature. Poison it.
+        dr[3612 + 16] = dr[3612 + 16].xor(0xff.toByte())
         val drParsed = DeviceResponse.fromDataItem(Cbor.decode(dr))
         assertEquals(
             "Device authentication signature failed to verify",
@@ -430,9 +431,9 @@ class DeviceResponseTest {
         sessionTranscript: DataItem
     ) {
         val dr = encodedDeviceResponse.copyOf()
-        // By inspection we know the offset 3071 is always the random for IssuerSignedItem
+        // By inspection we know the offset for the random for IssuerSignedItem
         // for the disclosed value for given_name. Poison it.
-        dr[3071] = dr[3071].xor(0xff.toByte())
+        dr[3497 + 8] = dr[3497 + 8].xor(0xff.toByte())
         val drParsed = DeviceResponse.fromDataItem(Cbor.decode(dr))
         assertEquals(
             "Digest mismatch for data element given_name in org.iso.18013.5.1",
@@ -548,8 +549,9 @@ class DeviceResponseTest {
         eReaderKey: EcPrivateKey
     ) {
         val dr = encodedDeviceResponse.copyOf()
-        // By inspection we know the offset 3088 always contain the device auth EC MAC. Poison it.
-        dr[3088] = dr[3088].xor(0xff.toByte())
+        Logger.iCbor(TAG, "dr", dr)
+        // By inspection we know the offset which always contain the device auth EC MAC. Poison it.
+        dr[3517 + 16] = dr[3517 + 16].xor(0xff.toByte())
         val drParsed = DeviceResponse.fromDataItem(Cbor.decode(dr))
         assertEquals(
             "Device authentication MAC failed to verify",
@@ -664,13 +666,13 @@ class DeviceResponseTest {
             """
                 {
                   "org.iso.18013.5.1": [24(<< {
-                    "digestID": 48,
-                    "random": h'7a5dc224bebb1e4403c308f97052d8fe',
+                    "digestID": 6,
+                    "random": h'a2bc4547ceb4ec25a8617f13f8a21673',
                     "elementIdentifier": "age_over_18",
                     "elementValue": true
                   } >>), 24(<< {
-                    "digestID": 25,
-                    "random": h'eb0f39cfd0c6668ae37453b8efecfbcd',
+                    "digestID": 43,
+                    "random": h'3eda470c3cc1f18d4979e7b3d99311fe',
                     "elementIdentifier": "given_name",
                     "elementValue": "Erika"
                   } >>)]
@@ -686,13 +688,13 @@ class DeviceResponseTest {
             """
                 {
                   "org.iso.23220.1": [24(<< {
-                    "digestID": 19,
-                    "random": h'6bdb42b9c96791786c53065c4e2b0087',
+                    "digestID": 34,
+                    "random": h'1373eb313c9cb6252f2343c1840d133d',
                     "elementIdentifier": "family_name",
                     "elementValue": "Mustermann"
                   } >>), 24(<< {
-                    "digestID": 5,
-                    "random": h'cefe6fd6870424a75d181025d4dcf210',
+                    "digestID": 32,
+                    "random": h'e15d2404105d7a163dbd5b2af37c3e3c',
                     "elementIdentifier": "given_name",
                     "elementValue": "Erika"
                   } >>)]
@@ -786,13 +788,13 @@ class DeviceResponseTest {
             """
                 {
                   "org.iso.18013.5.1": [24(<< {
-                    "digestID": 48,
-                    "random": h'7a5dc224bebb1e4403c308f97052d8fe',
+                    "digestID": 6,
+                    "random": h'a2bc4547ceb4ec25a8617f13f8a21673',
                     "elementIdentifier": "age_over_18",
                     "elementValue": true
                   } >>), 24(<< {
-                    "digestID": 25,
-                    "random": h'eb0f39cfd0c6668ae37453b8efecfbcd',
+                    "digestID": 43,
+                    "random": h'3eda470c3cc1f18d4979e7b3d99311fe',
                     "elementIdentifier": "given_name",
                     "elementValue": "Erika"
                   } >>)]
@@ -955,13 +957,13 @@ class DeviceResponseTest {
             """
                 {
                   "org.iso.18013.5.1": [24(<< {
-                    "digestID": 48,
-                    "random": h'7a5dc224bebb1e4403c308f97052d8fe',
+                    "digestID": 6,
+                    "random": h'a2bc4547ceb4ec25a8617f13f8a21673',
                     "elementIdentifier": "age_over_18",
                     "elementValue": true
                   } >>), 24(<< {
-                    "digestID": 25,
-                    "random": h'eb0f39cfd0c6668ae37453b8efecfbcd',
+                    "digestID": 43,
+                    "random": h'3eda470c3cc1f18d4979e7b3d99311fe',
                     "elementIdentifier": "given_name",
                     "elementValue": "Erika"
                   } >>)]

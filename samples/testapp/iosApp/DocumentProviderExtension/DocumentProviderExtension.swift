@@ -114,13 +114,31 @@ func getPresentmentSource() async -> PresentmentSource {
     }
     zkSystemRepository.add(zkSystem: longfellow)
      */
-    return SimplePresentmentSource(
+    return SimplePresentmentSource.companion.create(
         documentStore: documentStore,
         documentTypeRepository: documentTypeRepository,
-        readerTrustManager: readerTrustManager,
         zkSystemRepository: zkSystemRepository,
-        skipConsentPrompt: true,
-        dynamicMetadataResolver: { requester in nil },
+        resolveTrustFn: { requester in
+            if let certChain = requester.certChain {
+                let result = try! await readerTrustManager.verify(
+                    chain: certChain.certificates,
+                    atTime: KotlinClockCompanion().getSystem().now()
+                )
+                if result.isTrusted {
+                    return result.trustPoints.first?.metadata
+                }
+            }
+            return nil
+        },
+        showConsentPromptFn: { requester, trustMetadata, credentialPresentmentData, preselectedDocuments, onDocumentsInFocus in
+            try! await promptModelSilentConsent(
+                requester: requester,
+                trustMetadata: trustMetadata,
+                credentialPresentmentData: credentialPresentmentData,
+                preselectedDocuments: preselectedDocuments,
+                onDocumentsInFocus: { documents in onDocumentsInFocus(documents) }
+            )
+        },
         preferSignatureToKeyAgreement: false,
         domainMdocSignature: TestAppUtils.shared.CREDENTIAL_DOMAIN_MDOC_USER_AUTH,
         domainMdocKeyAgreement: TestAppUtils.shared.CREDENTIAL_DOMAIN_MDOC_MAC_USER_AUTH,

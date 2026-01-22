@@ -1,13 +1,13 @@
 package org.multipaz.compose.presentment
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.runtime.collectAsState
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.FragmentActivity
 import io.ktor.client.engine.HttpClientEngineFactory
@@ -16,22 +16,25 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.multipaz.compose.prompt.PromptDialogs
 import org.multipaz.context.initializeApplication
-import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.presentment.model.PresentmentModel
 import org.multipaz.presentment.model.PresentmentSource
-import org.multipaz.presentment.model.UriSchemePresentmentMechanism
-import org.multipaz.prompt.PromptModel
 import org.multipaz.util.Logger
 import java.net.URL
 import androidx.core.net.toUri
 import coil3.ImageLoader
+import coil3.network.ktor3.KtorNetworkFetcherFactory
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.android.Android
+import org.multipaz.compose.branding.Branding
+import org.multipaz.presentment.model.uriSchemePresentment
+import org.multipaz.prompt.AndroidPromptModel
 
 /**
  * Base class for activity used for credential presentments using URI schemes.
  *
  * Applications should subclass this and include the appropriate stanzas in its manifest
  *
- * See the [MpzCmpWallet](https://github.com/davidz25/MpzCmpWallet) sample for an example.
+ * See `ComposeWallet` in [Multipaz Samples](https://github.com/openwallet-foundation/multipaz-samples)
+ * for an example.
  */
 abstract class UriSchemePresentmentActivity: FragmentActivity() {
     companion object {
@@ -41,24 +44,12 @@ abstract class UriSchemePresentmentActivity: FragmentActivity() {
     /**
      * Settings provided by the application for specifying what to present.
      *
-     * @property appName the application name.
-     * @property appIcon the application icon.
-     * @property promptModel the [PromptModel] to use.
-     * @property applicationTheme the theme to use.
-     * @property documentTypeRepository a [DocumentTypeRepository]
-     * @property presentmentSource the [PresentmentSource] to use as the source of truth for what to present.
+     * @property source the [PresentmentSource] to use as the source of truth for what to present.
      * @property httpClientEngineFactory the factory for creating the Ktor HTTP client engine (e.g. CIO).
-     * @property imageLoader the [ImageLoader] to use.
      */
     data class Settings(
-        val appName: String,
-        val appIcon: @Composable () -> Painter,
-        val promptModel: PromptModel,
-        val applicationTheme: @Composable (content: @Composable () -> Unit) -> Unit,
-        val documentTypeRepository: DocumentTypeRepository,
-        val presentmentSource: PresentmentSource,
+        val source: PresentmentSource,
         val httpClientEngineFactory: HttpClientEngineFactory<*>,
-        val imageLoader: ImageLoader
     )
 
     /**
@@ -68,7 +59,7 @@ abstract class UriSchemePresentmentActivity: FragmentActivity() {
      */
     abstract suspend fun getSettings(): Settings
 
-    private val presentmentModel = PresentmentModel()
+    private val promptModel = AndroidPromptModel.Builder().apply { addCommonDialogs() }.build()
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,7 +67,7 @@ abstract class UriSchemePresentmentActivity: FragmentActivity() {
         initializeApplication(this.applicationContext)
         enableEdgeToEdge()
 
-        window.setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
+        window.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             setTranslucent(true)
         }
@@ -94,7 +85,7 @@ abstract class UriSchemePresentmentActivity: FragmentActivity() {
                 referrerUrl = null
             }
             if (url != null) {
-                CoroutineScope(Dispatchers.Main).launch {
+                CoroutineScope(Dispatchers.Main + promptModel).launch {
                     startPresentment(url, referrerUrl, getSettings())
                 }
             }
@@ -106,57 +97,42 @@ abstract class UriSchemePresentmentActivity: FragmentActivity() {
         referrerUrl: String?,
         settings: Settings
     ) {
+        val imageLoader = ImageLoader.Builder(applicationContext).components {
+            add(KtorNetworkFetcherFactory(HttpClient(Android.create())))
+        }.build()
+
+        setContent {
+            val currentBranding = Branding.Current.collectAsState().value
+            currentBranding.theme {
+                PromptDialogs(
+                    promptModel = promptModel,
+                    imageLoader = imageLoader,
+                )
+            }
+        }
+
         val origin = referrerUrl?.let {
             val url = URL(it)
             "${url.protocol}://${url.host}${if (url.port != -1) ":${url.port}" else ""}"
         }
-        presentmentModel.setPromptModel(settings.promptModel)
         try {
-            val mechanism = object : UriSchemePresentmentMechanism(
+            val redirectUri = uriSchemePresentment(
+                source = settings.source,
                 uri = url,
                 origin = origin,
-                httpClientEngineFactory = settings.httpClientEngineFactory
-            ) {
-                override fun openUriInBrowser(uri: String) {
-                    // TODO: maybe defer this until the presentment is over...
-                    startActivity(
-                        Intent(
-                            Intent.ACTION_VIEW,
-                            uri.toUri()
-                        )
-                    )
-                }
-
-                override fun close() {
-                    Logger.i(TAG, "closing..")
-                    finish()
-                }
-            }
-            presentmentModel.reset()
-            presentmentModel.setConnecting()
-            presentmentModel.setMechanism(mechanism)
+                httpClientEngineFactory = settings.httpClientEngineFactory,
+            )
+            // Open the redirect URI in a browser...
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    redirectUri.toUri()
+                )
+            )
         } catch (e: Throwable) {
             Logger.i(TAG, "Error processing request", e)
-            e.printStackTrace()
+        } finally {
             finish()
-            return
-        }
-
-        setContent {
-            settings.applicationTheme {
-                PromptDialogs(settings.promptModel)
-                Presentment(
-                    appName = settings.appName,
-                    appIconPainter = settings.appIcon(),
-                    presentmentModel = presentmentModel,
-                    presentmentSource = settings.presentmentSource,
-                    documentTypeRepository = settings.documentTypeRepository,
-                    imageLoader = settings.imageLoader,
-                    onPresentmentComplete = { finish() },
-                    onlyShowConsentPrompt = true,
-                    showCancelAsBack = true
-                )
-            }
         }
     }
 

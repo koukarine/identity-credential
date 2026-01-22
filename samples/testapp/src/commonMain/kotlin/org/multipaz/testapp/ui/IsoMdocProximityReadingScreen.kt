@@ -62,6 +62,7 @@ import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.io.bytestring.ByteString
@@ -76,6 +77,7 @@ import org.multipaz.testapp.ShowResponseMetadata
 import org.multipaz.util.fromHex
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 private const val TAG = "IsoMdocProximityReadingScreen"
 
@@ -222,11 +224,16 @@ fun IsoMdocProximityReadingScreen(
                     readerShowQrScanner.value = false
                     eReaderKey.value = null
                     readerJob = coroutineScope.launch() {
+                        val reader = if (app.externalNfcTagReaders.isNotEmpty())  {
+                            app.externalNfcTagReaders.first()
+                        } else {
+                            NfcTagReader.getReaders().first()
+                        }
                         try {
                             var transferProtocol = ""
                             doReaderFlow(
                                 app = app,
-                                nfcTagReader = null,
+                                nfcTagReader = reader,
                                 encodedDeviceEngagement = ByteString(data.substring(5).fromBase64Url()),
                                 existingTransport = null,
                                 handover = Simple.NULL,
@@ -634,6 +641,22 @@ fun IsoMdocProximityReadingScreen(
                         )
                         Text(
                             text = "Insert polling frames for Observe Mode",
+                        )
+                    }
+                }
+                item {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.Start),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked =  app.settingsModel.readerAllowMultipleRequests.collectAsState().value,
+                            onCheckedChange = { value ->
+                                app.settingsModel.readerAllowMultipleRequests.value = value
+                            },
+                        )
+                        Text(
+                            text = "Keep connection open for multiple requests",
                         )
                     }
                 }

@@ -62,24 +62,24 @@ struct ClaimsSection : View {
 struct RequestedDocumentSection : View {
 
     let rpName: String
-    let docMeta: AbstractDocumentMetadata
+    let document: Document
     let retainedClaims: [Claim]
     let notRetainedClaims: [Claim]
 
     var body: some View {
         HStack(alignment: .center) {
-            if let cardArt = docMeta.cardArt {
+            if let cardArt = document.cardArt {
                 let uiImage = UIImage(data: cardArt.toNSData())!
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFit()
                     .frame(height: 32)
             }
-            if let displayName = docMeta.displayName {
+            if let displayName = document.displayName {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(displayName)
                         .font(.headline)
-                    if let typeDisplayName = docMeta.typeDisplayName {
+                    if let typeDisplayName = document.typeDisplayName {
                         Text(typeDisplayName)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -115,10 +115,10 @@ struct RequestedDocumentSection : View {
 
 func getRelyingPartyName(
     requester: Requester,
-    trustPoint: TrustPoint?,
+    trustMetadata: TrustMetadata?,
 ) -> String {
-    if trustPoint != nil {
-        if let displayName = trustPoint?.metadata.displayName {
+    if trustMetadata != nil {
+        if let displayName = trustMetadata?.displayName {
             return displayName
         } else {
             return "Trusted verifier"
@@ -133,12 +133,12 @@ func getRelyingPartyName(
 struct RelyingPartySection : View {
 
     let rpName: String
-    let trustPoint: TrustPoint?
+    let trustMetadata: TrustMetadata?
 
     var body: some View {
 
         VStack(spacing: 10) {
-            if let iconUrl = trustPoint?.metadata.displayIconUrl {
+            if let iconUrl = trustMetadata?.displayIconUrl {
                 AsyncImage(url: URL(string: iconUrl)) { phase in
                     if let image = phase.image {
                         image
@@ -153,7 +153,7 @@ struct RelyingPartySection : View {
                         ProgressView()
                     }
                 }
-            } else if let iconData = trustPoint?.metadata.displayIcon {
+            } else if let iconData = trustMetadata?.displayIcon {
                 let uiImage = UIImage(data: iconData.toNSData())!
                 Image(uiImage: uiImage)
                     .resizable()
@@ -188,24 +188,24 @@ struct InfoSection: View {
 /// - Parameters:
 ///   - credentialPresentmentData: the combinations of credentials and claims that the user can select.
 ///   - requester: the relying party which is requesting the data.
-///   - trustPoint: if the requester is in a trust-list, the ``TrustPoint`` indicating this.
+///   - trustMetadata:``TrustMetadata`` conveying the level of trust in the requester, if any..
 ///   - onConfirm: callback when the user presses the Share button with the credentials that were selected.
 public struct Consent: View {
 
     let credentialPresentmentData: CredentialPresentmentData
     let requester: Requester
-    let trustPoint: TrustPoint?
+    let trustMetadata: TrustMetadata?
     let onConfirm: (_: CredentialPresentmentSelection) -> Void
 
     public init(
         credentialPresentmentData: CredentialPresentmentData,
         requester: Requester,
-        trustPoint: TrustPoint?,
+        trustMetadata: TrustMetadata?,
         onConfirm: @escaping (_: CredentialPresentmentSelection) -> Void,
     ) {
         self.credentialPresentmentData = credentialPresentmentData
         self.requester = requester
-        self.trustPoint = trustPoint
+        self.trustMetadata = trustMetadata
         self.onConfirm = onConfirm
     }
 
@@ -218,7 +218,6 @@ public struct Consent: View {
                 .options.first!
                 .members.first!
                 .matches.first!
-            let docMeta = cred.credential.document.metadata
 
             let retainedClaims = Array(cred.claims.filter( {
                 ($0.key as! MdocRequestedClaim).intentToRetain == true
@@ -233,13 +232,13 @@ public struct Consent: View {
 
             let rpName = getRelyingPartyName(
                 requester: requester,
-                trustPoint: trustPoint
+                trustMetadata: trustMetadata
             )
 
             VStack(spacing: 5) {
                 RelyingPartySection(
                     rpName: rpName,
-                    trustPoint: trustPoint,
+                    trustMetadata: trustMetadata,
                 )
 
                 VStack {
@@ -247,15 +246,15 @@ public struct Consent: View {
                         VStack(alignment: .leading, spacing: 10) {
                             RequestedDocumentSection(
                                 rpName: rpName,
-                                docMeta: docMeta,
+                                document: cred.credential.document,
                                 retainedClaims: retainedClaims,
                                 notRetainedClaims: notRetainedClaims,
                             )
 
-                            let infoText = if let privacyPolicyUrl = trustPoint?.metadata.privacyPolicyUrl {
+                            let infoText = if let privacyPolicyUrl = trustMetadata?.privacyPolicyUrl {
                                 "The website requesting this data has been identified and is trusted. " +
                                 "Review the [\(rpName) privacy policy](\(privacyPolicyUrl)) to see how your data is being handled"
-                            } else if trustPoint != nil {
+                            } else if trustMetadata != nil {
                                 "The website requesting this data has been identified and is trusted"
                             } else {
                                 "The website requesting this data is unknown so make sure you are comfortable sharing this data with them"
