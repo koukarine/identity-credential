@@ -12,7 +12,7 @@ actual fun testUtilSetupCryptoProvider() {
     Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME) // remove first to ensure it's not already there
     Security.addProvider(BouncyCastleProvider())
 
-    println("In testUtilCommonSetup for androidInstrumentedTest")
+    println("In testUtilCommonSetup for androidInstrumentedTest.")
     println("Crypto.provider: ${Crypto.provider}")
     println("Crypto.supportedCurves: ${Crypto.supportedCurves}")
 }
